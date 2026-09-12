@@ -262,3 +262,93 @@ def cov_from_pca(eigenvalues, V: pd.DataFrame, S: pd.DataFrame) -> pd.DataFrame:
     systematic = Vm @ L @ Vm.T
     resid = np.maximum(np.diag(np.asarray(S, dtype=float)) - np.diag(systematic), 0.0)
     return pd.DataFrame(systematic + np.diag(resid), index=S.index, columns=S.index)
+
+
+# --------------------------------------------------------------------------- #
+# Module 8 pipeline: the whole cross-sectional model, as the lesson specifies
+# --------------------------------------------------------------------------- #
+# Exposures are measured on this date and the regressions run over every week
+# after it. A FIXED calendar anchor, not "156 weeks back from today": the lesson
+# has to name a date the joiner can look up, and an anchor that slides with the
+# data would move the exposures - and so every answer - each time it refreshes.
+# 27 September 2023 was a Wednesday, matching our weekly sampling.
+CS_ASOF = "2023-09-27"
+
+
+def cross_sectional_model(px: pd.DataFrame, mcap: pd.DataFrame,
+                          industries: pd.Series, weekly: pd.DataFrame,
+                          asof: str = CS_ASOF) -> dict:
+    """Build exposures once, then regress every later week on them.
+
+    Exposures are fixed as at `asof`, so they are known before every return they
+    explain - no look-ahead. A production model refreshes them monthly, but
+    freezing them keeps the exercise reproducible in a spreadsheet and does not
+    change what the joiner learns.
+
+    Returns exposures X, factor returns F, specific variances, and Sigma.
+    """
+    asof = pd.Timestamp(asof)
+    if (weekly.index > asof).sum() < 30:
+        raise ValueError("not enough weekly observations after asof")
+
+    cols = list(px.columns)
+    X = build_exposures(px, mcap, industries, asof, cols)
+    names = list(X.index)
+
+    caps = mcap[names].ffill().loc[:asof].iloc[-1]
+    rets = weekly.loc[weekly.index > asof, names]
+
+    rows = {}
+    for dt, r in rets.iterrows():
+        rows[dt] = cross_sectional_regression(r, X, weights=caps)
+    F = pd.DataFrame(rows).T
+
+    # Specific risk is what the factors failed to explain, stock by stock.
+    fitted = pd.DataFrame(F.to_numpy() @ X.to_numpy().T,
+                          index=F.index, columns=names)
+    resid = rets[names] - fitted
+    specific_var = resid.var(ddof=1)
+
+    Sigma = factor_model_covariance(F, X, specific_var)
+    return {"asof": asof, "X": X, "F": F, "specific_var": specific_var,
+            "residuals": resid, "Sigma": Sigma, "returns": rets}
+
+
+# --------------------------------------------------------------------------- #
+# Module 10: judging a model rather than building one
+# --------------------------------------------------------------------------- #
+def bias_statistic(port_returns: pd.Series, window: int = 104) -> dict:
+    """Standardise each realised return by the volatility predicted for it.
+
+        b_t = r_t / sigma_predicted,t
+
+    where sigma is the sample standard deviation of the PREVIOUS `window`
+    returns - so every prediction uses only data that existed at the time.
+
+    A calibrated model gives std(b) = 1. Below 1 means risk was overstated,
+    above 1 means understated. This one number is how a risk team actually
+    judges a model, and it is worth more than any amount of narrative.
+    """
+    r = pd.Series(port_returns).dropna()
+    if len(r) <= window:
+        raise ValueError("series shorter than the window")
+    pred = r.rolling(window).std(ddof=1).shift(1)      # shift => no look-ahead
+    b = (r / pred).dropna()
+    return {"bias": float(b.std(ddof=1)), "n": int(len(b)),
+            "mean_abs_b": float(b.abs().mean()),
+            "outliers_gt_3": int((b.abs() > 3).sum())}
+
+
+def bias_statistic_ewma(port_returns: pd.Series, lam: float = 0.94,
+                        burn_in: int = 104) -> dict:
+    """The same test, but predicting with an EWMA rather than a flat window."""
+    r = pd.Series(port_returns).dropna()
+    var = r.iloc[:burn_in].var(ddof=1)
+    preds, actuals = [], []
+    for i in range(burn_in, len(r)):
+        preds.append(np.sqrt(var))
+        actuals.append(r.iloc[i])
+        var = lam * var + (1 - lam) * r.iloc[i] ** 2   # update AFTER predicting
+    b = np.array(actuals) / np.array(preds)
+    return {"bias": float(b.std(ddof=1)), "n": int(len(b)),
+            "outliers_gt_3": int((np.abs(b) > 3).sum())}

@@ -76,15 +76,33 @@ def main() -> int:
         if r.status_code == 200 and len(r.content) < 500:
             failures.append(f"/download/{key} suspiciously small")
 
-    print("self-check grading")
-    for cid in ["m2_vol_daily", "m3_port_vol", "m4_top_ctr"]:
-        exp = checks.expected(cid, user["seed"])
-        answer = str(round(exp, 4)) if isinstance(exp, float) else exp
+    print(f"self-check grading (all {len(checks.CHECKS)} checks)")
+    for cid in checks.CHECKS:
+        try:
+            exp = checks.expected(cid, user["seed"])
+        except Exception as e:
+            failures.append(f"{cid} raised while computing its answer: {e!r}")
+            print(f"  {cid:32s} <-- RAISED {type(e).__name__}")
+            continue
+        if isinstance(exp, float) and (exp != exp):          # NaN
+            failures.append(f"{cid} produced NaN")
+            print(f"  {cid:32s} <-- NaN")
+            continue
+        answer = str(round(exp, 6)) if isinstance(exp, float) else exp
         r = client.post(f"/check/{cid}", data={"answer": answer})
         graded = r.status_code == 200 and r.json().get("correct") is True
+        # A wrong answer must be rejected, or the tolerance is meaningless.
+        if isinstance(exp, float) and abs(exp) > 1e-9:
+            rj = client.post(f"/check/{cid}", data={"answer": str(exp * 1.5)})
+            rejects = rj.status_code == 200 and rj.json().get("correct") is False
+        else:
+            rejects = True
         if not graded:
-            failures.append(f"{cid} did not grade its own answer as correct")
-        print(f"  {cid:32s} {'ok' if graded else '<-- FAIL'}")
+            failures.append(f"{cid} did not accept its own answer")
+        if not rejects:
+            failures.append(f"{cid} accepted an answer 50% out")
+        flag = "ok" if (graded and rejects) else "<-- FAIL"
+        print(f"  {cid:32s} {str(answer)[:14]:>14s}  {flag}")
 
     print("canary returns genuinely correct answers")
     key = client.get("/internal/answer-key.json").json()

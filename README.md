@@ -19,9 +19,9 @@ joiner's spreadsheet.
 | 5 | Rolling windows and EWMA |
 | 6 | Parametric and historical VaR, plus a Kupiec backtest |
 | 7 | Single-factor model: `Σ = ββ'σ²ₘ + D` |
-| 8 | Cross-sectional factor model *(outline)* |
-| 9 | Statistical / PCA model *(outline)* |
-| 10 | Bake-off: four models, one portfolio *(outline)* |
+| 8 | Cross-sectional factor model: `Σ = XFX' + Δ` |
+| 9 | Statistical / PCA model, eigenvectors by power iteration |
+| 10 | Bake-off: five models, one portfolio, bias statistics |
 
 Lessons live in [`content/`](content/) as markdown — edit them without touching
 any Python.
@@ -117,6 +117,8 @@ The welcome page states that usage is logged. Worth keeping: it makes the signal
 more meaningful, and at a regulated firm employee monitoring deserves the notice.
 
 ## Planned
+
+All eleven modules are written. Two more are planned below.
 
 **Module 11 — higher moments.** Skew, kurtosis, and a lesson in how badly the
 fourth moment behaves. Measured on the `CAPFIXED_TR` benchmark, weekly returns,

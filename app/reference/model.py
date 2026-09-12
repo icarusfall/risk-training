@@ -23,11 +23,22 @@ FREQ_RULE = {"daily": None, "weekly": "W-WED", "monthly": "ME"}
 # returns
 # --------------------------------------------------------------------------- #
 def resample_prices(px: pd.DataFrame, freq: str) -> pd.DataFrame:
+    """Resample to a lower frequency, dropping an incomplete trailing period.
+
+    pandas labels each bucket with its END date, so with data to Friday 11 Sep
+    the final W-WED bucket is labelled 16 Sep and contains two days. Left in, a
+    two-day stub is counted as a week (and eleven days as a month), which is
+    both wrong and - worse - gives a different observation count from the one a
+    joiner gets by sampling Wednesday closes and stopping at the last one. The
+    numerical effect on a volatility is a rounding error; the mismatched row
+    count is what would cost somebody an afternoon.
+    """
     if freq == "daily":
         return px
     if freq not in FREQ_RULE:
         raise ValueError(f"unknown frequency {freq!r}")
-    return px.resample(FREQ_RULE[freq]).last()
+    out = px.resample(FREQ_RULE[freq]).last()
+    return out[out.index <= px.index.max()]
 
 
 def returns(px: pd.DataFrame, freq: str = "daily", log: bool = False) -> pd.DataFrame:

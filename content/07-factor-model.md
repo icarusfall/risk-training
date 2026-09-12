@@ -80,8 +80,24 @@ reasons that have nothing to do with the FTSE 100, and so do the banks. The mode
 cannot see that, so it **understates** risk for a portfolio concentrated in one
 sector and is roughly right for a well-spread one.
 
-Test it. Build a portfolio of five banks and compare sample versus single-factor
-volatility. Then do the same with five names from five different industries.
+Test it. Build equally-weighted portfolios of five banks, five miners, five
+utilities, and then five names from five different industries. Compare the
+single-factor prediction against what each actually realised:
+
+| Portfolio | Realised | Single-factor | Error |
+|---|---|---|---|
+| Five banks | 24.7% | 21.0% | **&minus;3.7pp** |
+| Five miners | 32.5% | 25.5% | **&minus;7.0pp** |
+| Five utilities | 19.1% | 13.9% | **&minus;5.2pp** |
+| One per industry | 17.2% | 18.1% | +0.9pp |
+
+Every concentrated portfolio is understated, and the well-spread one is fine.
+That is the single-factor model's characteristic failure, and it is a dangerous
+one: it is most wrong exactly when a portfolio is most concentrated, which is
+when somebody is most likely to be asking.
+
+Module 8 fixes part of this. Only part &mdash; and which part turns out to be
+interesting.
 
 !!! tip "The deeper point"
     Neither number is *right*. The sample matrix fits the past exactly, including

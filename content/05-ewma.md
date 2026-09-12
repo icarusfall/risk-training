@@ -126,14 +126,41 @@ You should see:
   window stays elevated far longer &mdash; 2008 is still inside it.
 - **March 2020.** The sharpest move in the sample. EWMA(0.94) roughly doubles in
   a month.
-- **September 2022.** The gilt and LDI crisis. Worth looking at closely given
-  where you work &mdash; note that it shows up strongly in financials and real
-  estate names, and much less in the miners and oil majors.
-- **The one-year anniversary problem.** Watch a rolling 52-week estimate in March
-  2021. It drops off a cliff, not because risk fell that week, but because the
-  Covid crash left the window. Nothing happened in the market that day at all.
-  This artefact is a genuine operational headache: risk numbers move, someone
-  asks why, and the honest answer is "because of a date".
+- **September 2022.** The gilt and LDI crisis, which is worth dwelling on given
+  where you work &mdash; and which is *not* what most people expect. Aggregate
+  equity volatility barely moved: EWMA(0.94) averaged 15.1% over September and
+  October against 14.8% for a rolling 104-week window. It was a gilt crisis, not
+  an equity crisis.
+
+    The sector detail is the interesting part. Daily volatility in those two
+    months, as a multiple of the same names' calm-2022 volatility:
+
+    | Industry | Multiple |
+    |---|---|
+    | Real Estate | **1.60** |
+    | Utilities | 1.25 |
+    | Financials | 0.99 |
+    | Basic Materials | 0.90 |
+    | Energy | 0.74 |
+
+    So it hit **rate-sensitive** equity, not financial equity. Real estate and
+    utilities are long-duration assets &mdash; bond proxies &mdash; and a violent
+    move in gilt yields repriced them hard. Banks, which earn more as rates rise,
+    did not budge. If your instinct was "financial crisis, so banks", this is a
+    useful correction: ask what the shock actually transmits *through*.
+
+- **The one-year anniversary problem.** Watch a rolling 52-week estimate through
+  early 2021. On 24 February it reads **34.5%**; five weeks later, on 31 March,
+  **21.1%**. Nothing happened in the market. The Covid crash simply left the
+  window.
+
+    EWMA(0.94) over the identical weeks goes 21.8% to 18.8%. A 3 point drift
+    against a 13 point cliff.
+
+    This is a genuine operational headache, not a curiosity: the number moves,
+    a portfolio manager asks why, and the honest answer is "because of a date".
+    Being able to say that clearly, and to have the EWMA comparison ready, is
+    most of the job.
 
 EWMA does not have that problem. Old observations fade rather than falling off a
 ledge. That is the real argument for it.

@@ -106,6 +106,41 @@ def _ctx(seed: int, dataset: str = "core") -> dict:
             "stock": assigned_stock(seed, ds)}
 
 
+# Universe-wide objects for modules 8 and 9 are identical for every joiner and
+# moderately expensive, so they are memoised on the price cache's mtime and
+# rebuilt only when the data refreshes.
+_universe_cache: dict[str, tuple[float, dict]] = {}
+
+
+def _universe_models(dataset: str = "core") -> dict:
+    """The full-universe covariance, its PCA, and the cross-sectional model."""
+    from .data import store
+    mtime = store.PRICES_PARQUET.stat().st_mtime if store.PRICES_PARQUET.exists() else 0.0
+    hit = _universe_cache.get(dataset)
+    if hit and hit[0] == mtime:
+        return hit[1]
+
+    ds = datasets.build(dataset)
+    px = ds.prices
+    rw = M.returns(px, "weekly")
+    S = M.cov_matrix(rw)
+
+    vals, V = A.pca_deflation(S, k=5)
+    total_var = float(np.trace(S.to_numpy()))
+    S_pca = A.cov_from_pca(vals, V, S)
+    pc1_score = pd.Series(rw.to_numpy() @ V["PC1"].to_numpy(), index=rw.index)
+
+    mcap = store.market_caps().loc[px.index]
+    industries = ds.universe.set_index("yahoo").loc[list(px.columns), "industry"]
+    cs = A.cross_sectional_model(px, mcap, industries, rw)
+
+    out = {"ds": ds, "rw": rw, "S": S, "eigenvalues": vals, "V": V,
+           "total_var": total_var, "S_pca": S_pca, "pc1_score": pc1_score,
+           "equal_weight": rw.mean(axis=1), "cs": cs}
+    _universe_cache[dataset] = (mtime, out)
+    return out
+
+
 def _vol_at(freq: str):
     def f(c):
         s = c["ds"].prices[c["stock"]]
@@ -167,6 +202,60 @@ def _beta(c):
     return float(A.market_model(r.loc[idx], rm.loc[idx])["beta"].iloc[0])
 
 
+# --- module 8: cross-sectional factor model ----------------------------------
+def _size_exposure(c):
+    X = _universe_models()["cs"]["X"]
+    return float(X.loc[c["stock"], "size"]) if c["stock"] in X.index else float("nan")
+
+
+def _factor_vol(name: str):
+    def f(c):
+        F = _universe_models()["cs"]["F"]
+        return float(100 * F[name].std(ddof=1) * np.sqrt(52))
+    return f
+
+
+def _cs_port_vol(c):
+    Sig = _universe_models()["cs"]["Sigma"]
+    names = [n for n in c["names"] if n in Sig.index]
+    sub = Sig.loc[names, names]
+    w = c["w"].reindex(names).to_numpy()
+    return float(100 * M.portfolio_vol(w, sub, "weekly"))
+
+
+# --- module 9: statistical / PCA model ---------------------------------------
+def _pc1_variance(c):
+    um = _universe_models()
+    return float(100 * um["eigenvalues"][0] / um["total_var"])
+
+
+def _pc1_corr(c):
+    um = _universe_models()
+    return float(np.corrcoef(um["pc1_score"], um["equal_weight"])[0, 1])
+
+
+def _pca_port_vol(c):
+    S_pca = _universe_models()["S_pca"]
+    names = [n for n in c["names"] if n in S_pca.index]
+    sub = S_pca.loc[names, names]
+    w = c["w"].reindex(names).to_numpy()
+    return float(100 * M.portfolio_vol(w, sub, "weekly"))
+
+
+# --- module 10: judging a model rather than building one ---------------------
+def _port_return_series(c) -> pd.Series:
+    r = M.returns(c["px"], "weekly")
+    return pd.Series(r.to_numpy() @ c["w"].to_numpy(), index=r.index)
+
+
+def _bias_flat(c):
+    return float(A.bias_statistic(_port_return_series(c), window=104)["bias"])
+
+
+def _bias_ewma(c):
+    return float(A.bias_statistic_ewma(_port_return_series(c), lam=0.94)["bias"])
+
+
 CHECKS: dict[str, Check] = {ck.id: ck for ck in [
     Check("m1_excluded", "1", "How many of the 100 names did you have to drop - "
           "for bad data or for too short a history?", "number", _n_excluded,
@@ -203,6 +292,43 @@ CHECKS: dict[str, Check] = {ck.id: ck for ck in [
     Check("m7_beta", "7", "Beta of {stock} against the total-return benchmark, "
           "weekly returns", "number", _beta,
           "Slope of the regression of the stock on the market. SLOPE() will do it."),
+
+    Check("m8_size_exposure", "8", "Size exposure (z-scored log market cap) of "
+          "{stock} as at 27 September 2023", "number", _size_exposure,
+          "Take logs of market cap across all 81 names, subtract the mean, divide "
+          "by the sample standard deviation, then clip at plus or minus 3."),
+    Check("m8_mom_factor_vol", "8", "Annualised volatility of the MOMENTUM factor "
+          "return series (%)", "percent", _factor_vol("momentum"),
+          "Standard deviation of your weekly momentum coefficients, times sqrt(52). "
+          "It should come out far below any single stock."),
+    Check("m8_port_vol", "8", "Annualised volatility of your portfolio under the "
+          "cross-sectional model (%)", "percent", _cs_port_vol,
+          "Build the full 81-name Sigma = XFX-transpose + Delta first, then take "
+          "the rows and columns for your twelve holdings."),
+
+    Check("m9_pc1_variance", "9", "Share of total variance explained by the FIRST "
+          "principal component (%)", "percent", _pc1_variance,
+          "First eigenvalue divided by the trace of the covariance matrix, the "
+          "trace being the sum of its diagonal."),
+    Check("m9_pc1_corr", "9", "Correlation between the PC1 score series and the "
+          "equal-weighted market return", "number", _pc1_corr,
+          "Score each week as the PC1 loadings dotted with that week of returns, "
+          "then correlate against the simple average of all 81 stocks. Prepare to "
+          "be slightly startled."),
+    Check("m9_port_vol_5pc", "9", "Annualised volatility of your portfolio using a "
+          "covariance rebuilt from 5 principal components (%)", "percent", _pca_port_vol,
+          "Systematic part is V L V-transpose; then add a diagonal top-up so every "
+          "stock keeps its own total variance."),
+
+    Check("m10_bias_flat", "10", "Bias statistic for your portfolio, forecasting "
+          "with a rolling 104-week volatility", "number", _bias_flat,
+          "Divide each week's return by the standard deviation of the previous 104 "
+          "weeks, then take the standard deviation of those ratios. 1.00 is "
+          "perfectly calibrated."),
+    Check("m10_bias_ewma", "10", "The same bias statistic, forecasting with EWMA at "
+          "lambda = 0.94", "number", _bias_ewma,
+          "Update the variance AFTER making each forecast, never before, or you are "
+          "peeking at the return you are trying to predict."),
 ]}
 
 
