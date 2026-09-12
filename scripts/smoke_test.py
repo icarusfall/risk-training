@@ -104,6 +104,17 @@ def main() -> int:
         flag = "ok" if (graded and rejects) else "<-- FAIL"
         print(f"  {cid:32s} {str(answer)[:14]:>14s}  {flag}")
 
+    print("company descriptions")
+    from app.data import datasets, descriptions
+    for name in datasets.DATASETS:
+        ds = datasets.build(name)
+        cov = descriptions.coverage(ds.universe["yahoo"])
+        ok = not cov["missing"]
+        if not ok:
+            failures.append(f"{name}: no description for {cov['missing']}")
+        print(f"  {name:8s} {cov['known']}/{len(ds.universe)} described"
+              f"  {'ok' if ok else '<-- missing ' + ', '.join(cov['missing'])}")
+
     print("canary returns genuinely correct answers")
     key = client.get("/internal/answer-key.json").json()
     truth = checks.expected("m3_port_vol", user["seed"])

@@ -96,14 +96,27 @@ class Check:
     rtol: float | None = None
 
 
+def stock_label(ds: datasets.Dataset, ticker: str) -> str:
+    """"Kingfisher plc (KGF.L)" rather than a bare ticker.
+
+    Question text that reads as jargon puts people off before they have started,
+    and the ticker on its own tells a new joiner nothing.
+    """
+    u = ds.universe.set_index("yahoo")
+    if ticker in u.index:
+        return f"{u.loc[ticker, 'name']} ({ticker})"
+    return ticker
+
+
 def _ctx(seed: int, dataset: str = "core") -> dict:
     ds = datasets.build(dataset)
     w = test_portfolio(seed, ds)
     names = list(w.index)
     px = ds.prices[names]
+    stock = assigned_stock(seed, ds)
     return {"ds": ds, "w": w, "names": names, "px": px,
             "wb": benchmark_weights(ds, names),
-            "stock": assigned_stock(seed, ds)}
+            "stock": stock, "stock_label": stock_label(ds, stock)}
 
 
 # Universe-wide objects for modules 8 and 9 are identical for every joiner and
@@ -337,7 +350,7 @@ def context_for(seed: int, dataset: str = "core") -> dict:
 
 
 def prompt_for(check: Check, ctx: dict) -> str:
-    return check.prompt.format(stock=ctx["stock"])
+    return check.prompt.format(stock=ctx.get("stock_label") or ctx["stock"])
 
 
 def expected(check_id: str, seed: int, dataset: str = "core"):

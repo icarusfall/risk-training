@@ -258,6 +258,35 @@ of them actual miners, so the factor means something specific.
     slightly worse. There is no free lunch here, only a choice about where you
     would rather be wrong.
 
+!!! danger "And our classification has a worse problem than granularity"
+    Look up the sector labels our source actually provides, on the
+    [data page](/data). Two of them bundle companies with opposite economics
+    under one heading:
+
+    | Source label | Contains |
+    |---|---|
+    | Personal Goods | Burberry **and** Unilever |
+    | Household Goods & Home Construction | Barratt, Persimmon **and** Reckitt |
+
+    Burberry sells £2,000 trench coats; Unilever sells Domestos. One is about as
+    cyclical as a business gets and the other is about as defensive. They carry
+    the same label, so our mapping puts both in Consumer Discretionary. Same
+    story with housebuilders sitting alongside Reckitt.
+
+    No rule based on the *label* can fix this, because the label genuinely does
+    not distinguish them. It needs a per-company override, which means somebody
+    has to make and maintain 100 judgement calls.
+
+    We have left it as it is, deliberately, so you can see it. But note what it
+    does to the model: `ind_Consumer Discretionary` is a blend of luxury,
+    retail, housebuilding and two enormous defensives, so its factor return is
+    an average of things that do not move together. Any portfolio you build out
+    of those names will have its risk estimated through a factor that means very
+    little.
+
+    When a vendor tells you their model has 60 industry factors, this is the
+    question to ask: not how many, but *who decided which, and on what basis?*
+
 That nuance &mdash; a factor model is only as good as its factor definitions
 &mdash; is the real payoff of this module, and it is worth more than the machinery.
 

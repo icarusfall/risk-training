@@ -155,7 +155,8 @@ main { padding: 2.4rem 0 5rem; }
   margin-bottom: 1.6rem;
 }
 .hero h1 { margin-bottom: .5rem; }
-.hero p { color: var(--ink-soft); max-width: 62ch; margin-bottom: 0; font-size: 1.05rem; }
+.hero p { color: var(--ink-soft); max-width: 64ch; margin-bottom: .9rem; font-size: 1.05rem; }
+.hero p:last-child { margin-bottom: 0; }
 
 /* --------------------------------------------------------------- modules */
 .module-list { list-style: none; padding: 0; margin: 0; display: grid; gap: .7rem; }
@@ -321,4 +322,41 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
 @media print {
   header.site, footer.site, .check-row { display: none; }
   body::before { display: none; }
+}
+
+/* ------------------------------------------------------------- tooltips */
+/* Appended to <body> by a small script rather than drawn with ::after on
+   the row: the portfolio table lives inside an overflow:auto container, and
+   a pure-CSS tooltip would be clipped at its edge. */
+.has-tip { cursor: help; }
+.has-tip:hover { background: var(--sky-wash) !important; }
+
+#tip {
+  position: fixed;
+  z-index: 200;
+  max-width: 330px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--sky);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lift);
+  padding: .7rem .85rem;
+  font-size: .85rem;
+  line-height: 1.5;
+  color: var(--ink);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity .12s ease, transform .12s ease;
+}
+#tip.on { opacity: 1; transform: translateY(0); }
+#tip .t-title { font-family: var(--serif); font-weight: 600; font-size: .98rem; display: block; }
+#tip .t-sector {
+  display: block; font-size: .72rem; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); font-weight: 600; margin: .1rem 0 .45rem;
+}
+#tip .t-body { display: block; }
+#tip .t-meta {
+  display: block; margin-top: .5rem; padding-top: .45rem;
+  border-top: 1px solid var(--line-soft); color: var(--ink-soft); font-size: .78rem;
 }

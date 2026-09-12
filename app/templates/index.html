@@ -5,10 +5,23 @@
 <div class="hero">
   <h1>Build your own risk model</h1>
   <p>
-    Twenty years of FTSE 100 price history, four crises, and a spreadsheet. You will
-    build a covariance matrix from scratch, turn it into a volatility and a tracking
-    error, watch both move as you change the window, and finish with a statistical
-    model whose first principal component turns out to be the market.
+    This site will take you through the process of building your own investment
+    risk model from real, up-to-date data. Your own unique portfolio has been
+    generated{% if user %} below{% endif %} &mdash; a set of weights across
+    selected UK equities, just like a real fund manager would hold{% if not user %},
+    and you will see it as soon as you sign in{% endif %}.
+  </p>
+  <p>
+    Your task is to build various flavours of risk model that try to predict
+    useful metrics like tracking error and volatility, in increasing order of
+    complexity. You will download the data, use Excel to implement the
+    techniques, and submit your estimates as you go &mdash; and this site will
+    check that you are on the right track.
+  </p>
+  <p style="font-size:.95rem">
+    Start with <a href="/module/orientation">Module&nbsp;0</a>, which explains
+    what a risk model is for. There is no rush, and nothing here expects you to
+    already know the answer.
   </p>
 </div>
 
@@ -38,22 +51,45 @@
     {% if portfolio %}
     <hr>
     <h4 style="margin-top:0">Your portfolio</h4>
-    <p class="meta-line">
-      Every joiner gets a different one, so your answers are yours alone. Your
-      single-stock questions use <strong>{{ portfolio.stock }}</strong>.
+    <p style="margin-bottom:.4rem">
+      Twelve UK companies, with weights adding to 100%. Every joiner gets a
+      different set, so your answers are yours alone.
+      <span class="meta-line">Hover any row for a note on what the company does.</span>
     </p>
-    <div class="table-scroll" style="max-height:290px;overflow-y:auto">
-      <table class="wtable">
-        <thead><tr><th>Ticker</th><th class="num">Your weight</th><th class="num">Benchmark</th><th class="num">Active</th><th></th></tr></thead>
-        <tbody>
-        {% for t, w in portfolio.weights.items() %}
-          {% set b = portfolio.bench[t] %}
+    <div class="card" style="background:var(--sky-wash);border-color:#CBDFEC;box-shadow:none;margin:.9rem 0">
+      <p style="margin:0">
+        Your single-stock questions will focus on
+        <strong>{{ portfolio.stock.name }}</strong>, whose ticker is
+        <code>{{ portfolio.stock.ticker }}</code>.
+      </p>
+      <p style="margin:.35rem 0 0;font-size:.93rem;color:var(--ink-soft)">
+        {{ portfolio.stock.description }}
+        {% if portfolio.stock.industry %}Classified under {{ portfolio.stock.industry }}.{% endif %}
+      </p>
+    </div>
+    <div class="table-scroll" style="max-height:340px;overflow-y:auto">
+      <table>
+        <thead>
           <tr>
-            <td>{{ t }}</td>
-            <td class="num">{{ '%.0f'|format(100*w) }}%</td>
-            <td class="num">{{ '%.1f'|format(100*b) }}%</td>
-            <td class="num" style="color:{{ '#4E7145' if w>b else '#9C5560' }}">{{ '%+.1f'|format(100*(w-b)) }}%</td>
-            <td style="width:110px"><div class="wbar" style="width:{{ (100*w*4)|round(0)|int }}%"></div></td>
+            <th>Company</th><th>Sector</th>
+            <th class="num">Your weight</th><th class="num">Benchmark</th><th class="num">Active</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in portfolio.rows %}
+          <tr class="has-tip"
+              data-tip-title="{{ r.name }} ({{ r.ticker }})"
+              data-tip-sector="{{ r.industry }}{% if r.gloss %} &middot; {{ r.gloss }}{% endif %}"
+              data-tip-body="{{ r.description }}"
+              data-tip-meta="{% if r.mcap %}Market cap £{{ '{:,.0f}'.format(r.mcap) }}m &middot; {% endif %}Your weight {{ '%.0f'|format(100*r.weight) }}%, benchmark {{ '%.1f'|format(100*r.bench) }}%">
+            <td>
+              <strong>{{ r.name }}</strong>
+              <span class="meta-line" style="display:block;font-size:.76rem">{{ r.ticker }}</span>
+            </td>
+            <td><span class="pill">{{ r.industry }}</span></td>
+            <td class="num">{{ '%.0f'|format(100*r.weight) }}%</td>
+            <td class="num">{{ '%.1f'|format(100*r.bench) }}%</td>
+            <td class="num" style="color:{{ '#4E7145' if r.active > 0 else '#9C5560' }}">{{ '%+.1f'|format(100*r.active) }}%</td>
           </tr>
         {% endfor %}
         </tbody>
@@ -124,4 +160,69 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Floating tooltip for the portfolio rows. Appended to <body> rather than drawn
+// with a CSS pseudo-element, because the table sits in an overflow:auto box
+// that would clip it.
+(function () {
+  var rows = document.querySelectorAll('.has-tip');
+  if (!rows.length) { return; }
+
+  var tip = document.createElement('div');
+  tip.id = 'tip';
+  tip.innerHTML = '<span class="t-title"></span><span class="t-sector"></span>' +
+                  '<span class="t-body"></span><span class="t-meta"></span>';
+  document.body.appendChild(tip);
+
+  var elTitle  = tip.querySelector('.t-title');
+  var elSector = tip.querySelector('.t-sector');
+  var elBody   = tip.querySelector('.t-body');
+  var elMeta   = tip.querySelector('.t-meta');
+
+  function place(e) {
+    var pad = 14;
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    var x = e.clientX + pad;
+    var y = e.clientY + pad;
+    // Flip rather than overflow the viewport.
+    if (x + w > window.innerWidth - 8)  { x = e.clientX - w - pad; }
+    if (y + h > window.innerHeight - 8) { y = e.clientY - h - pad; }
+    tip.style.left = Math.max(8, x) + 'px';
+    tip.style.top  = Math.max(8, y) + 'px';
+  }
+
+  rows.forEach(function (row) {
+    row.addEventListener('mouseenter', function (e) {
+      elTitle.textContent  = row.dataset.tipTitle || '';
+      elSector.textContent = row.dataset.tipSector || '';
+      elBody.textContent   = row.dataset.tipBody || '';
+      elMeta.textContent   = row.dataset.tipMeta || '';
+      elMeta.style.display = row.dataset.tipMeta ? 'block' : 'none';
+      tip.classList.add('on');
+      place(e);
+    });
+    row.addEventListener('mousemove', place);
+    row.addEventListener('mouseleave', function () { tip.classList.remove('on'); });
+  });
+
+  // Touch devices get no hover, so tapping a row toggles the tip instead.
+  rows.forEach(function (row) {
+    row.addEventListener('click', function (e) {
+      if (window.matchMedia('(hover: hover)').matches) { return; }
+      var showing = tip.classList.contains('on') && tip.dataset.forRow === row.dataset.tipTitle;
+      tip.dataset.forRow = row.dataset.tipTitle;
+      if (showing) { tip.classList.remove('on'); return; }
+      elTitle.textContent  = row.dataset.tipTitle || '';
+      elSector.textContent = row.dataset.tipSector || '';
+      elBody.textContent   = row.dataset.tipBody || '';
+      elMeta.textContent   = row.dataset.tipMeta || '';
+      tip.classList.add('on');
+      place({ clientX: e.clientX || 20, clientY: e.clientY || 20 });
+    });
+  });
+})();
+</script>
 {% endblock %}

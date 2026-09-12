@@ -24,8 +24,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, URLSafeSerializer
 
+import pandas as pd
+
 from . import canary, checks, config, content, db, mail
-from .data import datasets, exports, store
+from .data import datasets, descriptions, exports, store
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -120,17 +122,48 @@ def _ctx(request: Request, **kw) -> dict:
 # --------------------------------------------------------------------------- #
 # pages
 # --------------------------------------------------------------------------- #
+def _portfolio_view(user: dict, ds: datasets.Dataset) -> dict:
+    """Everything the front page needs to show a holding as a company rather
+    than as a ticker: name, industry, and a plain-English description."""
+    ctx = checks.context_for(int(user["seed"]))
+    u = ds.universe.set_index("yahoo")
+    rows = []
+    for ticker, weight in ctx["w"].items():
+        meta = u.loc[ticker] if ticker in u.index else None
+        name = str(meta["name"]) if meta is not None else ticker
+        industry = str(meta["industry"]) if meta is not None else ""
+        bench = float(ctx["wb"].get(ticker, 0.0))
+        rows.append({
+            "ticker": ticker, "name": name, "industry": industry,
+            "gloss": descriptions.gloss(industry),
+            "description": descriptions.describe(ticker, name, industry),
+            "weight": float(weight), "bench": bench, "active": float(weight) - bench,
+            "mcap": float(meta["mcap_gbp_m"]) if meta is not None
+            and pd.notna(meta.get("mcap_gbp_m")) else None,
+        })
+    stock = ctx["stock"]
+    smeta = u.loc[stock] if stock in u.index else None
+    return {
+        "rows": rows,
+        "stock": {
+            "ticker": stock,
+            "name": str(smeta["name"]) if smeta is not None else stock,
+            "industry": str(smeta["industry"]) if smeta is not None else "",
+            "description": descriptions.describe(
+                stock,
+                str(smeta["name"]) if smeta is not None else "",
+                str(smeta["industry"]) if smeta is not None else ""),
+        },
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     store.ensure_fresh()
     user = current_user(request)
     prog = db.progress(user["id"]) if user else {}
     ds = datasets.build(datasets.DEFAULT_DATASET) if store.has_data() else None
-    portfolio = None
-    if user and ds:
-        ctx = checks.context_for(int(user["seed"]))
-        portfolio = {"weights": ctx["w"], "stock": ctx["stock"],
-                     "bench": ctx["wb"]}
+    portfolio = _portfolio_view(user, ds) if (user and ds) else None
     return templates.TemplateResponse(request, "index.html", _ctx(
         request, user=user, progress=prog, summary=ds.summary() if ds else None,
         portfolio=portfolio, n_checks=len(checks.CHECKS),
