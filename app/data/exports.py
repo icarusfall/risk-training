@@ -53,7 +53,24 @@ def quality_csv(ds: Dataset) -> bytes:
     return pd.DataFrame(rows).to_csv(index=False).encode()
 
 
+# The raw workbook is ~6MB and takes 8s to assemble, which is a long time to
+# hold a request open. Cache on (dataset, last date) so a refresh invalidates it
+# but repeat downloads are instant.
+_wb_cache: dict[tuple[str, str], bytes] = {}
+
+
 def workbook(ds: Dataset) -> bytes:
+    key = (ds.name, ds.summary()["last_date"])
+    hit = _wb_cache.get(key)
+    if hit is not None:
+        return hit
+    blob = _build_workbook(ds)
+    _wb_cache.clear()          # only ever keep the most recent build
+    _wb_cache[key] = blob
+    return blob
+
+
+def _build_workbook(ds: Dataset) -> bytes:
     """Starter .xlsx: the same data on three tabs, plus a README tab.
 
     Saves the CSV-import faff so the joiner gets to the maths sooner. It does
@@ -97,9 +114,24 @@ def workbook(ds: Dataset) -> bytes:
         ("  dropped out of the FTSE 100, often after doing badly, are absent.", False),
         ("  Your volatility estimates will be flattered.", False),
         ("", False),
-        ("  Cleaning: bad prints have been repaired and two names excluded.", False),
-        ("  The full log is on the website - but try finding them yourself first.", False),
     ]
+    if ds.name == "raw":
+        lines += [
+            ("  NOTHING HAS BEEN CLEANED. This file is the panel exactly as it", False),
+            ("  arrives: ragged start dates, real gaps, and bad prices left in.", False),
+            (f"  {s['n_gaps']:,} blank cells, and {s['n_start_dates']} different start dates.", False),
+            ("  That is on purpose - finding the problems is Module 1.", False),
+            ("", False),
+            ("  Switch to the core workbook from Module 2 onward.", False),
+        ]
+    else:
+        n_dq = len(ds.excluded.get("data_quality", []))
+        n_sh = len(ds.excluded.get("short_history", []))
+        lines += [
+            (f"  Cleaning: bad prints repaired, {n_dq} name(s) dropped for unusable", False),
+            (f"  data and {n_sh} for too little history. No gaps remain.", False),
+            ("  The full log is on the website - but try finding them yourself first.", False),
+        ]
     for i, (text, bold) in enumerate(lines, start=1):
         c = ws.cell(row=i, column=1, value=text)
         if bold:

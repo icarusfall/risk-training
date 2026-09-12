@@ -201,9 +201,29 @@ def _var_historical(c):
     return float(100 * A.var_historical(pr, conf=0.99))
 
 
-def _n_excluded(c):
-    return float(len(c["ds"].excluded.get("data_quality", []))
-                 + len(c["ds"].excluded.get("short_history", [])))
+# Module 1 works from the RAW file, not the cleaned one, so its checks are
+# computed there. Note the count below is NOT the same set as core's
+# exclusions even though both happen to number 19: core removes two names on
+# data quality before it ever tests their history length.
+M1_START = "2005-01-01"
+
+
+def _n_no_history(c):
+    """How many of the 100 names have no price back to the start of 2005."""
+    px = datasets.build("raw").prices
+    firsts = px.apply(lambda col: col.first_valid_index())
+    return float((firsts > pd.Timestamp(M1_START)).sum())
+
+
+def _scale_break_ticker(c):
+    """The name whose price drops by roughly ten times and stays there."""
+    best, best_gap = "", 1e9
+    for rep in datasets.build("raw").quality_report:
+        for b in rep["breaks"]:
+            gap = abs(float(b["ratio"]) - 10.0)
+            if gap < best_gap:
+                best, best_gap = rep["ticker"], gap
+    return best
 
 
 def _beta(c):
@@ -270,9 +290,17 @@ def _bias_ewma(c):
 
 
 CHECKS: dict[str, Check] = {ck.id: ck for ck in [
-    Check("m1_excluded", "1", "How many of the 100 names did you have to drop - "
-          "for bad data or for too short a history?", "number", _n_excluded,
-          "Count both reasons together. Our cleaning log has the answer, but try first."),
+    Check("m1_no_history", "1", "Working from the raw file: how many of the 100 "
+          "names have no price history going back as far as 1 January 2005?",
+          "number", _n_no_history,
+          "One rule, applied to every column: does it have a price at the start of "
+          "2005 or not? The first_date column on the Universe tab is the quick way, "
+          "or COUNT each price column."),
+    Check("m1_scale_break", "1", "One name's price falls by a factor of about ten "
+          "and never recovers. Which ticker is it?", "text", _scale_break_ticker,
+          "Look for a daily return near minus 90% that does not bounce back the "
+          "next day. There are two candidates with broken data - this is the one "
+          "whose jump is a clean factor of ten."),
     Check("m2_vol_daily", "2", "Annualised volatility of {stock} from DAILY returns, "
           "over the whole sample (%)", "percent", _vol_at("daily"),
           "Standard deviation of daily returns, times sqrt(252)."),

@@ -10,32 +10,56 @@ Before any maths: look at the data. Properly. This module has almost no formulas
 in it and it is the one that separates people who are good at this job from
 people who produce confident nonsense.
 
-Download the [starter workbook](/download/workbook) and open the `Prices` tab.
+Download the **[raw workbook](/download/workbook?dataset=raw)** and open the
+`Prices` tab.
+
+!!! warning "Use the raw file for this module, and only this module"
+    That link gives you the panel exactly as it arrives from the data provider:
+    all 100 names, ragged start dates, real gaps, and the bad prices still in.
+    It is the only file you can actually learn this from &mdash; you cannot
+    practise spotting a broken price series in a file somebody has already
+    cleaned.
+
+    **From Module 2 onward, switch to the
+    [core workbook](/download/workbook?dataset=core).** That is the same data
+    after we have made the decisions you are about to make, trimmed to a tidy
+    rectangle. Everyone works from the same canonical file after this, because
+    otherwise no two people's answers would agree.
 
 ## 1. The panel is ragged, on purpose
 
 You have 100 FTSE 100 constituents. You do not have 100 usable price histories.
 
-Sort the `Universe` tab by the `From` column. Some names go back to 1995. Several
-started after 2015. At least one has barely three years.
+Sort the `Universe` tab by the `first_date` column. Some names go back to 1995.
+Nine started after 2015. One of them &mdash; Metlen, which joined the index
+recently &mdash; has barely a year.
 
 This is your first judgement call, and there is no correct answer:
 
 - **Keep every name** and your covariance matrix can only span the shortest
-  history &mdash; perhaps three years, which throws away every crisis.
+  history. That is about thirteen months, which throws away every crisis in the
+  sample.
 - **Keep the long window** and you must drop the short names, losing real
   companies from the model.
 - **Something in between**, which is what everyone actually does.
 
 !!! excel "Doing it in Excel"
-    Put `=COUNT(B2:B5407)` under each price column to count observations, or
-    `=MIN(IF(B2:B5407<>"",$A$2:$A$5407))` for the first date. Then use those as
-    a filter row you can sort by. Delete the columns you reject &mdash; do not
-    leave them in with gaps, because gaps silently poison a covariance matrix.
+    Have a look at the `Prices` tab. As you scroll along the top rows from left
+    to right, you will find some price histories that do not begin until later
+    and so are blank at the top.
 
-We offer two windows on the [data page](/data): **Core** from 2005 (more names)
-and **Long** from 1995 (longer history, roughly a quarter fewer names). Look at
-both and notice what the trade costs you.
+    If you want to see how much history each stock has, try using the `COUNT`
+    command to tell you &mdash; put it in a spare row above the prices and drag
+    it across. You can then sort or filter on that row.
+
+    When you decide to reject a column, delete it rather than leaving it in with
+    gaps at the top. Blank cells get read as zeros later on, and a zero return
+    is not the same thing as a missing one.
+
+We offer three files on the [data page](/data): **Raw** (this one),
+**Core** from 2005, and **Long** from 1995, which keeps a longer history at the
+cost of roughly a quarter of the names. Have a look at all three and notice what
+each trade costs you.
 
 ## 2. Some of the prices are simply wrong
 
@@ -62,9 +86,19 @@ from 363.50 to 37.43 and simply stays there.
 
 ### Your task
 
-Hunt them. Build a returns column (Module 2 will formalise this, but
-`=B3/B2-1` will do) and use conditional formatting to flag any absolute daily
-move above, say, 40%. Then look at each one and decide:
+Hunt them.
+
+Build a new returns tab with the daily returns for each stock over time.
+Technically quants prefer the log return, `=LN(B3/B2)`, but pretty much everyone
+just does `=B3/B2-1`. Either is fine for finding outliers.
+
+!!! tip "One Excel trap worth knowing now"
+    Excel's `LOG` function is base 10. The natural log &mdash; the one you want
+    for a log return &mdash; is `LN`. `LOG(B3/B2)` will give you a number, it
+    will look plausible, and it will be wrong by a factor of about 2.3.
+
+Then use conditional formatting to flag any absolute daily move above, say, 40%.
+Look at each one and decide:
 
 - **A real market event.** Barclays genuinely rose 73% on 26 January 2009. RBS
   genuinely fell 67% on 19 January 2009. These are the most interesting days in
@@ -111,14 +145,33 @@ and it is worth about **2 percentage points a year of entirely fictional return*
 
 ## 4. The benchmark that is lying to you
 
-Open the `Benchmarks` tab. There are several series and they do not mean the same
-thing. Two in particular:
+Open the `Benchmarks` tab.
+
+These are the top-level prices of other benchmarks, besides the FTSE 100 that we
+are digging into. In each case we are just looking at the combined value of the
+index &mdash; a single number per day &mdash; rather than breaking it out into
+all the component stocks as we have done on the `Prices` tab. You will see later
+how these become useful, in the time-series section of the tutorial.
+
+A key distinction is whether these total levels account for dividends or not.
+
+An index can be quoted two ways. A **price index** tracks only the share prices
+of its members. A **total return index** assumes every dividend is reinvested
+back into the index. Over twenty years that difference compounds into something
+enormous, and if you compare the wrong pair of series you will draw the wrong
+conclusion.
+
+Here is the trap. Two of the series look like they should be identical:
 
 - `ISF.L` &mdash; iShares Core FTSE 100, **distributing**
 - `CUKX.L` &mdash; iShares Core FTSE 100, **accumulating**
 
-Same index, same manager, same holdings. Compute the annualised return of each
-over the period where both exist.
+Same index, same manager, same underlying holdings. The only difference is what
+the fund does with the dividends it receives: the *distributing* share class
+pays them out to you as cash, and the *accumulating* one reinvests them inside
+the fund.
+
+Compute the annualised return of each, over the period where both exist.
 
 You should find `CUKX.L` beating `ISF.L` by around 3.7% a year, which is the FTSE
 100 dividend yield. The accumulating share class reinvests dividends inside the
