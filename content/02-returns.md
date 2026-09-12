@@ -83,7 +83,8 @@ five-day one, which puts a lumpy, seasonal error straight into your variance.
 Wednesday is the quietest day of the UK week.
 
 !!! excel "Getting Wednesdays"
-    Add a helper column next to your dates:
+    **Route one: filter the rows you have.** Add a helper column next to your
+    dates:
     ```
     =WEEKDAY(A2,2)=3
     ```
@@ -92,23 +93,95 @@ Wednesday is the quietest day of the UK week.
     ```
     =FILTER(A2:CD5407, WEEKDAY(A2:A5407,2)=3)
     ```
-    If a particular Wednesday was a holiday, take the previous trading day rather
-    than dropping the week.
+
+    **Route two: build the grid you want.** Often easier. Put any Wednesday in a
+    cell, then below it:
+    ```
+    =A2+7
+    ```
+    and fill down. You now have a clean weekly calendar that owes nothing to
+    what happens to be in the price file.
+
+    Route two leaves you needing to pull a price for each of those dates, and
+    some of them will be bank holidays with no row in the file. The answer is
+    an approximate-match **`VLOOKUP`**, which snaps each grid date onto the last
+    real trading day at or before it. See *Snapping a date grid onto real
+    trading days*, further down this page &mdash; it works identically for
+    weekly and monthly.
 
 ## Monthly: use month ends
 
-```
-=EOMONTH(A2,0)=A2
-```
-will not quite work, because the last *trading* day is rarely the last *calendar*
-day. Easier: flag a row when the month of the next date differs from the month of
-this one.
+Same two routes as the weekly case.
+
+**Filter the rows you have.** Flag a row when the month of the *next* date
+differs from the month of this one:
 
 ```
 =MONTH(A3)<>MONTH(A2)
 ```
 
 That marks the final trading day of each month. Filter on it.
+
+**Or build the grid.** `EOMONTH` gives you calendar month ends directly &mdash;
+put a start date in a cell, then below it:
+
+```
+=EOMONTH(A2,1)
+```
+
+and fill down, for a clean series of month ends.
+
+The catch is that the last *calendar* day of a month is rarely a *trading* day.
+31 August is a bank holiday about one year in seven; 25 December never trades.
+So you have a grid of dates, some of which have no row in the price file.
+
+!!! excel "Snapping a date grid onto real trading days"
+    This is the trick worth learning, and it solves the weekly and monthly cases
+    identically.
+
+    `VLOOKUP` with its fourth argument set to `TRUE` does an **approximate**
+    match: on a column sorted ascending, it returns the row with the largest
+    value **less than or equal to** your lookup date. Which is exactly the
+    behaviour you want &mdash; "give me the last trading day at or before this
+    date."
+
+    With your grid dates down column A and your tickers along row 1 (that top
+    row of tickers from earlier now earns its keep):
+    ```
+    =VLOOKUP($A2, Prices!$A:$CD, MATCH(B$1, Prices!$A$1:$CD$1, 0), TRUE)
+    ```
+    Drag it across and down. Every bank holiday silently resolves to the
+    previous trading day, which is the convention you want, and you never have
+    to special-case Good Friday.
+
+    Three things that will bite you:
+
+    - The lookup column **must be sorted ascending**. Dates in the price file
+      are, but if you have re-sorted anything, `TRUE` will return confident
+      nonsense rather than an error.
+    - A grid date **before** the first row of prices gives `#N/A`. Start your
+      grid inside the sample.
+    - It snaps **backwards**, always. A grid date after your last price returns
+      the last price you have, rather than an error, which will quietly flatten
+      the most recent return to zero. Stop the grid at your final date.
+
+    **Bonus marks** if you work out `XLOOKUP` as well. Its fifth argument is a
+    match mode, and `-1` means "exact match, or the next smaller item" &mdash;
+    the same snapping behaviour, without the fragile column counting:
+    ```
+    =XLOOKUP($A2, Prices!$A:$A, Prices!B:B, , -1)
+    ```
+
+    Further bonus marks for constructing some Frankenstein formula out of
+    `INDEX` and `MATCH` instead. `MATCH` with a third argument of `1` is the
+    same approximate match on its own, handing back a row number for `INDEX` to
+    fetch from:
+    ```
+    =INDEX(Prices!B:B, MATCH($A2, Prices!$A:$A, 1))
+    ```
+    This is the route the purists prefer, on the grounds that it does not care
+    where the lookup column sits relative to the answer. They are right, and
+    they will tell you so.
 
 ## Annualising: the square root of time
 
@@ -137,9 +210,15 @@ is not. If you ever find yourself multiplying a volatility by 252, stop.
     what everyone else means, and matching convention matters more than you think.
 
     Some particularly ancient members of the team still insist on plain
-    `STDEV`, which is ambiguous about which one it means. Excel covers for them
-    by defaulting it to `STDEV.S`, so they have got away with it for about
-    twenty-five years and see no reason to stop now.
+    `STDEV`, which is ambiguous about which one it means. Excel quietly covers
+    for them by defaulting it to `STDEV.S`, so they have got away with it for
+    twenty-five years and see no reason whatsoever to stop now. You may form
+    your own view on whether a function deprecated in 2010 constitutes a house
+    style or a personality trait.
+
+    Be warned that at least one of them had a hand in writing this exercise, so
+    expressing a strong opinion on the matter is a career decision rather than a
+    technical one.
 
 ## Now the interesting bit: they will not agree
 
