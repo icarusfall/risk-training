@@ -115,6 +115,32 @@ def main() -> int:
         print(f"  {name:8s} {cov['known']}/{len(ds.universe)} described"
               f"  {'ok' if ok else '<-- missing ' + ', '.join(cov['missing'])}")
 
+    print("shortcut file (answers.csv, linked from nowhere)")
+    idx = client.get("/download/")
+    check("/download/ index", idx.status_code)
+    if "answers.csv" not in idx.text:
+        failures.append("answers.csv missing from the /download/ index")
+    # every link in that index must resolve, or it looks like a stage set
+    import re as _re
+    for name in _re.findall(r'href="(/download/[^"]+)"', idx.text):
+        want = 200 if "answers" not in name else 200
+        got = client.get(name).status_code
+        if got != want:
+            failures.append(f"{name} -> {got}")
+    ans = client.get("/download/answers.csv")
+    check("/download/answers.csv", ans.status_code)
+    if "m3_port_vol" not in ans.text:
+        failures.append("answers.csv does not contain the answers")
+    # and it must not be reachable by following links from any page
+    import itertools
+    pages = ["/", "/data", "/login"] + [f"/module/{m}" for m in MODULES]
+    linked = [p for p in pages
+              for h in _re.findall(r'href="([^"]*)"', client.get(p).text)
+              if "answer" in h.lower()]
+    if linked:
+        failures.append(f"answers.csv is linked from {linked[:3]}")
+    print(f"  {'not linked from any page':32s} {'ok' if not linked else '<-- LEAKED'}")
+
     print("canary returns genuinely correct answers")
     key = client.get("/internal/answer-key.json").json()
     truth = checks.expected("m3_port_vol", user["seed"])

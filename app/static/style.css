@@ -360,3 +360,5 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
   display: block; margin-top: .5rem; padding-top: .45rem;
   border-top: 1px solid var(--line-soft); color: var(--ink-soft); font-size: .78rem;
 }
+
+.pill.danger { background: var(--rose-wash); color: #9C5560; border-color: #F0D2D6; }

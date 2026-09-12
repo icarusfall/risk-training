@@ -86,9 +86,15 @@
 <h2>Flags</h2>
 <div class="card">
   <p class="meta-line">
-    Soft signals only. Crawlers and prefetchers trip the first kind; a genuinely
-    well-built spreadsheet can trip the second. Both are a reason to chat, not a
-    conclusion.
+    Three kinds, and they do not mean the same thing.
+    <strong>canary</strong> means something fetched a path that only appears in
+    robots.txt or the page source &mdash; often a crawler or a prefetcher, so the
+    weakest signal. <strong>shortcut</strong> means somebody edited a URL, found
+    answers.csv in the download folder, and took it after being told it was
+    logged &mdash; deliberate, and the cleanest of the three.
+    <strong>cadence</strong> means answers arrived right first time and faster
+    than the arithmetic goes, which a genuinely good spreadsheet can also do.
+    All three are a reason to chat, never a conclusion.
   </p>
   {% if events %}
   <div class="table-scroll">
@@ -99,7 +105,7 @@
         <tr>
           <td class="meta-line">{{ e.created_at[:16]|replace("T", " ") }}</td>
           <td>{{ e.email or "not signed in" }}</td>
-          <td><span class="pill {% if e.kind == 'canary' %}warn{% else %}info{% endif %}">{{ e.kind }}</span></td>
+          <td><span class="pill {% if e.kind == 'shortcut' %}danger{% elif e.kind == 'canary' %}warn{% else %}info{% endif %}">{{ e.kind }}</span></td>
           <td class="meta-line">{{ e.path or e.detail }}</td>
         </tr>
       {% endfor %}

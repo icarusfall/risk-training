@@ -6,13 +6,17 @@ the joiner sails through at 100%, none the wiser. The only thing that happens
 is an email. This is a prompt for a conversation about how someone learns, not
 a trap that fails them - so it must never degrade their experience.
 
-Two independent signals:
+Three independent signals:
 
   BAIT      Paths a human browsing the site has no route to. They are not
             linked from any page; they appear only in robots.txt (as
             Disallow), in llms.txt, and in an HTML comment. Fetching one is
             evidence that something read the machine-facing surface of the
             site and acted on it.
+
+  SHORTCUT  answers.csv, which is on no page and is reachable only by asking
+            what is in /download/. A hit means somebody went looking through
+            the directory - deliberate, and neither a prefetcher nor a misclick.
 
   CADENCE   Behavioural. Answers that are right first time, across many
             checks, faster than the arithmetic could plausibly be done.
@@ -198,3 +202,130 @@ def maybe_flag_cadence(user: dict) -> None:
         )
     except Exception:
         log.exception("cadence assessment failed")
+
+
+# --------------------------------------------------------------------------- #
+# the directory-listing one
+# --------------------------------------------------------------------------- #
+# A third signal, and the distinction between all three matters when you read
+# the admin page:
+#
+#   BAIT      only in robots.txt / llms.txt / an HTML comment. A hit means
+#             something crawled the machine-facing surface of the site.
+#   SHORTCUT  answers.csv, which appears on NO page. The only way to reach it
+#             is to go poking at URLs and ask what is inside /download/, so a
+#             hit means somebody went looking - deliberate, and neither a
+#             prefetcher nor a misclick.
+#   CADENCE   behavioural: right first time, too fast, no wrong attempts.
+#
+# The file is genuinely correct and personalised, per the standing brief that
+# the shortcut must work. The preamble is warm about it, because someone who
+# edits a URL to see what is there is showing initiative and should not be made
+# to feel caught out.
+SHORTCUT_KEYS = {"answers", "answers.csv"}
+
+DIRECTORY_FILES = [
+    ("prices.csv", "Adjusted daily prices in pence, one column per stock"),
+    ("benchmarks.csv", "Index levels"),
+    ("universe.csv", "Names, ICB industries and market caps"),
+    ("cleaning-log.csv", "Repairs and exclusions"),
+    ("starter.xlsx", "All tabs in one workbook"),
+    ("answers.csv", "answers"),
+]
+
+_PREAMBLE = [
+    "# Model answers for every self-check on this site.",
+    "#",
+    "# You found this by poking at URLs rather than by reading the pages, which",
+    "# is a perfectly reasonable instinct and not one anybody will tell you off",
+    "# for.",
+    "#",
+    "# The numbers below are genuinely correct. They are computed from the same",
+    "# data you downloaded, for your portfolio specifically, so they will pass",
+    "# every check on the site.",
+    "#",
+    "# But the exercise exists so that you understand where these numbers come",
+    "# from. In six months someone will ask you why the tracking error moved and",
+    "# there will be no spreadsheet to hide behind. Copying these gets you a full",
+    "# set of green ticks and none of that.",
+    "#",
+    "# For transparency, since you were resourceful enough to find it: this",
+    "# download is logged against your name and the team lead gets an email. Not",
+    "# as a telling-off - just so there is a chance to ask how you are getting",
+    "# on, and whether something in the material is not landing. If a module has",
+    "# stopped making sense, saying so is far more useful to us than this file is",
+    "# to you.",
+    "#",
+]
+
+
+def answers_csv(user: dict, dataset: str = "core") -> str:
+    """The real answer key as CSV, with the preamble above at the top."""
+    key = answer_key(user, dataset)
+    lines = list(_PREAMBLE)
+    holdings = ", ".join(f"{k} {v:.0%}" for k, v in key["portfolio"].items())
+    lines.append(f"# Portfolio: {holdings}")
+    lines.append(f"# Single-stock questions use: {key['assigned_stock']}")
+    lines.append("#")
+    lines.append("check_id,module,question,answer,unit")
+    for cid, rec in key["answers"].items():
+        module = checks.CHECKS[cid].module if cid in checks.CHECKS else ""
+        question = str(rec["question"]).replace('"', "'")
+        lines.append(f'{cid},{module},"{question}",{rec["answer"]},{rec["unit"]}')
+    return "\n".join(lines) + "\n"
+
+
+def directory_listing() -> str:
+    """A plain, auto-generated-looking index of /download/.
+
+    Deliberately unstyled. A listing that matched the site's design would look
+    like a page somebody built on purpose; this should look like the sort of
+    thing a web server leaves lying around when nobody turned indexing off.
+    """
+    rows = "\n".join(
+        f'<li><a href="/download/{name}">{name}</a>  <span>{desc}</span></li>'
+        for name, desc in DIRECTORY_FILES
+    )
+    return (
+        "<!doctype html><html><head><title>Index of /download/</title>"
+        "<style>body{font-family:monospace;font-size:14px;padding:1.5rem;color:#222}"
+        "h1{font-size:1.05rem;font-weight:normal}ul{list-style:none;padding:0}"
+        "li{margin:.3rem 0}span{color:#888}</style></head><body>"
+        f"<h1>Index of /download/</h1><hr><ul>{rows}</ul><hr></body></html>"
+    )
+
+
+def trip_shortcut(user: dict | None, ip: str | None, user_agent: str | None) -> None:
+    """Record a deliberate answer-key download and notify. Never raises."""
+    try:
+        db.log_event("shortcut", user_id=(user or {}).get("id"),
+                     detail={"signal": "shortcut", "path": "/download/answers.csv"},
+                     ip=ip, user_agent=user_agent, path="/download/answers.csv")
+        who = (user or {}).get("name") or (user or {}).get("email") or "not signed in"
+        when = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        body = "\n".join([
+            f"{who} downloaded answers.csv.",
+            "",
+            f"  When       {when}",
+            f"  IP         {ip or 'unknown'}",
+            f"  User agent {user_agent or 'unknown'}",
+            "",
+            "That file is not linked from any page. The only way to reach it is to",
+            "edit the URL and ask what is inside /download/, so this was somebody",
+            "going looking - not a crawler following links, and not a misclick.",
+            "",
+            "It is a cleaner signal than the robots.txt bait paths for that reason,",
+            "but still not a reason for a telling-off. The file itself told them it",
+            "was logged, and they went ahead anyway, which is honest enough.",
+            "",
+            "The useful question is probably not 'why did you cheat' but 'which",
+            "module stopped making sense'.",
+            "",
+        ])
+        mail.send_admin(
+            subject=f"[risk-training] answers.csv downloaded - {who}",
+            body=body,
+        )
+        log.info("Shortcut file downloaded by %s", who)
+    except Exception:
+        log.exception("shortcut handler failed")

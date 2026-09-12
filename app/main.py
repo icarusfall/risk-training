@@ -221,10 +221,50 @@ def data_page(request: Request, dataset: str = datasets.DEFAULT_DATASET):
         quality=ds.quality_report, files=exports.FILES))
 
 
+def _resolve_download(key: str) -> str | None:
+    """Accept either an export key ("quality") or its filename ("cleaning-log.csv").
+
+    The directory index at /download/ lists real filenames, so those have to
+    resolve - a listing full of dead links would look like a stage set.
+    """
+    if key in exports.FILES:
+        return key
+    for k, (base, ext, *_rest) in exports.FILES.items():
+        if key == f"{base}.{ext}":
+            return k
+    return None
+
+
+@app.get("/download/")
+@app.get("/downloads/")
+def download_index():
+    """A bare directory index. Linked from nowhere.
+
+    This is how answers.csv is meant to be found: by someone editing the URL to
+    see what is in the folder. See canary.py for why that is a signal worth
+    having, and why it is a friendlier one than the hidden bait paths.
+    """
+    return HTMLResponse(canary.directory_listing())
+
+
 @app.get("/download/{key}")
 def download(key: str, request: Request, dataset: str = datasets.DEFAULT_DATASET):
-    if key not in exports.FILES:
+    if key in canary.SHORTCUT_KEYS:
+        user = current_user(request)
+        canary.trip_shortcut(user, client_ip(request),
+                             request.headers.get("user-agent"))
+        if not user:
+            return PlainTextResponse(
+                "Sign in first - the answers are personalised to your portfolio.\n",
+                status_code=401)
+        return PlainTextResponse(
+            canary.answers_csv(user), media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="answers.csv"'})
+
+    resolved = _resolve_download(key)
+    if resolved is None:
         raise HTTPException(404, "no such file")
+    key = resolved
     store.ensure_fresh()
     ds = datasets.build(dataset if dataset in datasets.DATASETS else datasets.DEFAULT_DATASET)
     _, _, fn, _ = exports.FILES[key]
@@ -360,7 +400,7 @@ def _admin_page(request: Request, token: str, **extra):
         u["total"] = len(checks.CHECKS)
     return templates.TemplateResponse(request, "admin.html", _ctx(
         request, users=users, token=token,
-        events=db.recent_events(["canary", "cadence"], limit=60),
+        events=db.recent_events(["canary", "shortcut", "cadence"], limit=60),
         activity=db.recent_events(["login", "download"], limit=40),
         base_url=config.BASE_URL, **extra))
 
