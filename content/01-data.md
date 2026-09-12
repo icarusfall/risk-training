@@ -115,7 +115,9 @@ Look at each one and decide:
     cluster on Mondays and Fridays. In this dataset, Wednesday sampling lands on
     a non-trading day 10 times; Friday 32 times; Monday 106.
 
-When you are done, compare your list against our [cleaning log](/data). We repair
+When you are done, compare your list against our cleaning log &mdash; either
+[on the data page](/data?dataset=raw) or as a
+[CSV](/download/quality?dataset=raw). We repair
 and exclude on published rules &mdash; and reasonable people would draw the line
 somewhere slightly different.
 

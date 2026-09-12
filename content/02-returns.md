@@ -9,6 +9,15 @@ time: 60 min
 Now the arithmetic starts. You are going to build three return series from one
 price series, annualise all three, and then explain why they disagree.
 
+!!! excel "The file you need from here on"
+    Work from the **[core workbook](/download/workbook?dataset=core)** &mdash; 81
+    names, 2005 onwards, already screened and trimmed to a complete rectangle
+    with no gaps.
+
+    This is the same data you were picking over in Module 1, after the decisions
+    you just made have been applied. Everyone uses this file from now on, so that
+    everyone's numbers agree. The ragged raw file has done its job.
+
 ## Simple or log?
 
 <div class="formula">
