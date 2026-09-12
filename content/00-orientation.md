@@ -75,9 +75,16 @@ when you check whether yesterday's predictions survived contact with reality.
 - **You get your own portfolio.** Each joiner is assigned a different set of
   holdings and a different single stock, so the self-checks mark *your* working.
   Comparing answers with the other new joiner will not help you.
-- **The checks grade the number, not the method.** `MMULT`, `SUMPRODUCT`,
-  pairwise `COVARIANCE.S`, forty intermediate tabs held together with hope &mdash;
-  all pass identically, to within 2%. We care that you understand the maths.
+- **The checker just validates that you got the right number.** There are lots of
+  different approaches in Excel that will all work fine. Different team members
+  already have different preferences on whether they use `MMULT`, `SUMPRODUCT`,
+  or just lots of spaghetti tabs building on each other using nothing more than
+  `*` and `+`. Answers are marked to within 2%, so a rounding difference will
+  never count against you.
+- **Ask people.** You are strongly encouraged to ask team colleagues how they
+  would calculate things in Excel if it is not clear to you. Different members of
+  the team will give you a more or less over-engineered answer, so choose your
+  fighter wisely.
 - **Shortcuts are fine.** Genuinely. Use whatever gets you there. The only thing
   worth protecting is that *you* end up understanding it, because in six months
   someone will ask you why the tracking error moved and there will be no
