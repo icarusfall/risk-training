@@ -174,6 +174,33 @@ It sits neatly between parametric and historical VaR in Module 6 — and having
 just watched kurtosis swing by a factor of two, a joiner is well placed to ask
 how much they trust a VaR number that depends on it.
 
+**Module 12 — fat-tailed distributions and Monte Carlo.** Stop patching the
+normal and replace it. Three routes, in increasing severity:
+
+| Approach | What it fits | Why bother |
+|---|---|---|
+| Student-t | a single degrees-of-freedom parameter | fits the *whole* distribution, and ν falls straight out of the kurtosis from Module 11 |
+| Power law / Hill estimator | the tail index α | asks only how heavy the tail is, ignoring the bulk |
+| Generalised Pareto (EVT) | exceedances over a threshold | the peaks-over-threshold theorem says the tail converges to GPD whatever the parent distribution |
+
+Then Monte Carlo: draw from the fitted distribution rather than evaluating a
+quantile formula. That gets you a full loss distribution instead of a single
+number, handles a portfolio with options or non-linear payoffs, and makes
+expected shortfall fall out for free.
+
+Two things worth making explicit when this gets written. Multivariate is where
+it gets hard — a t-copula with correlated marginals is the honest version, and
+drawing each stock independently from its own fat-tailed marginal badly
+understates joint tail risk, which is precisely the thing that kills you.
+And threshold choice in EVT is the whole game: too high and you have five
+observations, too low and the asymptotics do not hold. A mean-excess plot is
+the standard diagnostic, and reasonable people disagree.
+
+Doing this in Excel is feasible but strained — `T.INV`, `RAND()` and a data
+table will get a single-asset Monte Carlo going. This is probably the point where
+the exercise earns its move to Python, which is a fine note to end the programme
+on.
+
 ## Layout
 
 ```
