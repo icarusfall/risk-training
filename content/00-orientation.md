@@ -100,4 +100,8 @@ when you check whether yesterday's predictions survived contact with reality.
 Excel (Microsoft 365 on Windows is what we assume &mdash; the array formulas spill
 automatically). An hour or two at a time. A willingness to be wrong for a while.
 
-Start with [the data](/data), then Module 1.
+If you are feeling confident, take a look at [the data](/data) first &mdash; but
+it is not necessary, as it will be introduced gradually as you work through the
+modules.
+
+Start with [Module 1](/module/data).
