@@ -21,6 +21,10 @@ active weights instead of absolute ones:
 
 Same matrix. Same formula. Different vector.
 
+That gets you the right **total**. It does not get you the right
+**decomposition**, and the gap between those two statements is the most
+important thing in this module. Hold that thought until the end.
+
 Two properties worth internalising:
 
 - Active weights **sum to zero**. A long-only portfolio has a long/short active
@@ -121,12 +125,163 @@ weights, and it is worth being able to explain in one sentence at a meeting.
     is negative &mdash; it genuinely *reduces* total risk. The contributions still
     sum to &sigma;<sub>p</sub>. This surprises people, so be ready for it.
 
-## Do the same for active risk
+## Now the important bit: decomposing active risk
 
-Everything above works identically with active weights: substitute
-w<sub>a</sub> for **w** and you get contributions to *tracking error*. That is the
-report a portfolio manager actually wants &mdash; which of my active bets is using
-up my risk budget?
+Everything above *appears* to work identically with active weights. Substitute
+w<sub>a</sub> for **w** and you get contributions to tracking error. That is the
+report a portfolio manager actually wants &mdash; which of my active bets is
+using up my risk budget?
 
-Build both. The two rankings are often strikingly different, because an
-overweight in a low-volatility name can still be a large active bet.
+**The total will be right. The attribution will be wrong.**
+
+This is worth labouring, because it is a genuine defect rather than an
+approximation, and expensive third-party risk systems fall for it.
+
+### The 5% cash example
+
+Suppose you hold 95% of the FTSE 100, matched weight for weight, and 5% cash.
+
+Think about what you have actually decided. Every stock is held at its index
+weight, scaled down. The *only* active decision in the entire portfolio is the
+cash.
+
+Your active weights are:
+
+- each stock: 0.95 w<sub>b,i</sub> &minus; w<sub>b,i</sub> = **&minus;0.05 w<sub>b,i</sub>**
+- cash: **+0.05**
+
+Tracking error comes out at exactly 5% of the benchmark volatility &mdash; on our
+data, 5% &times; 17.09% = **0.854%**. That is correct, and comfortingly obvious:
+you are 5% out of the market.
+
+Now decompose it. Cash has zero variance and zero covariance with everything, so
+its **entire row of &Sigma; is zeros**. Therefore:
+
+<div class="formula">
+CTR<sub>cash</sub> = w<sub>a,cash</sub> &times; (&Sigma;w<sub>a</sub>)<sub>cash</sub> / &sigma;<sub>a</sub> = 0.05 &times; 0 / &sigma;<sub>a</sub> = 0
+</div>
+
+Your risk report now says that **100% of your tracking error comes from your
+stock holdings, and none of it from the cash.**
+
+That is nonsense. The stocks are the index, held at index weight. They are not a
+bet on anything. The cash is the only thing you did.
+
+| Decomposition | Cash | Stocks | Total |
+|---|---|---|---|
+| Naive &mdash; w<sub>a</sub> against &Sigma; | **0.0000%** | 0.8543% | 0.854% |
+| Rotated &mdash; see below | **0.8543%** | 0.0000% | 0.854% |
+
+### Why it happens
+
+Because **in active space, cash is not riskless.**
+
+Holding cash instead of the index is a *short position in the index*. Its
+benchmark-relative return is r<sub>cash</sub> &minus; r<sub>b</sub> =
+&minus;r<sub>b</sub>, which is exactly as volatile as the index itself. There is
+nothing safe about it.
+
+The plain covariance matrix cannot see this, because it describes **absolute**
+returns, and in absolute terms cash genuinely is riskless. A zero row in &Sigma;
+forces a zero contribution no matter how large the active weight sitting against
+it. And the Euler identity still holds &mdash; the contributions still sum to the
+tracking error &mdash; so nothing looks broken. The report is simply pointing at
+the wrong positions.
+
+### The fix: rotate the matrix into active space
+
+Replace every covariance with the covariance of **benchmark-relative** returns:
+
+<div class="formula">
+&Sigma;&#771;<sub>ij</sub> = Cov(r<sub>i</sub> &minus; r<sub>b</sub>, r<sub>j</sub> &minus; r<sub>b</sub>) = &Sigma;<sub>ij</sub> &minus; Cov(r<sub>i</sub>, r<sub>b</sub>) &minus; Cov(r<sub>j</sub>, r<sub>b</sub>) + Var(r<sub>b</sub>)
+</div>
+
+You already have every piece of that:
+
+- **Cov(r<sub>i</sub>, r<sub>b</sub>)** is the *i*-th element of
+  &Sigma;w<sub>b</sub> &mdash; one `MMULT`.
+- **Var(r<sub>b</sub>)** is w<sub>b</sub>&prime;&Sigma;w<sub>b</sub>, a single
+  number.
+
+Then decompose using your **portfolio** weights, not your active weights. The
+rotation has already taken the benchmark out:
+
+<div class="formula">
+&sigma;<sub>a</sub><sup>2</sup> = w<sub>p</sub>&prime; &Sigma;&#771; w<sub>p</sub> &nbsp;&nbsp;&nbsp;&nbsp; CTR<sub>i</sub> = w<sub>p,i</sub> (&Sigma;&#771; w<sub>p</sub>)<sub>i</sub> / &sigma;<sub>a</sub>
+</div>
+
+The total is **identical** &mdash; check that first, it is a good test of your
+algebra. But the attribution now lands on the positions that caused it. In the
+cash example, cash takes 100% and the stocks take 0%.
+
+!!! excel "Doing the rotation"
+    Add cash to your universe first: one extra row and column of **zeros** in the
+    covariance matrix, a benchmark weight of 0, and a portfolio weight of 5%.
+    Cash really does have zero absolute risk &mdash; that is the whole point.
+
+    Then, beside your covariance matrix:
+    ```
+    covib   =MMULT(Cov, wb)                        ' a column, one row per asset
+    varb    =MMULT(TRANSPOSE(wb), MMULT(Cov, wb))  ' one cell
+    ```
+    Paste `covib` **twice**: once as a column down the side, and once transposed
+    as a row across the top. Each cell of the rotated matrix is then
+    ```
+    =Cov!B2 - $M2 - N$1 + $O$1
+    ```
+    where `$M2` is that row's Cov(r<sub>i</sub>,r<sub>b</sub>), `N$1` is that
+    column's, and `$O$1` is Var(r<sub>b</sub>). Drag across and down.
+
+    On a 365 build, if `covib` is a spilled column you can do the whole thing in
+    one formula:
+    ```
+    =Cov - covib - TRANSPOSE(covib) + varb
+    ```
+
+    Two sanity checks before going further. The rotated matrix must still be
+    **symmetric**, and `w_p' Sigma~ w_p` must equal the tracking error you
+    already computed the ordinary way. If it does not, your row and column
+    vectors are the wrong way round.
+
+### It is not only about cash
+
+Cash is the cleanest illustration, but the same defect bites whenever an asset's
+**absolute** risk is a poor guide to its **benchmark-relative** risk:
+
+- Any holding that is not in the benchmark at all.
+- A portfolio that is not fully invested, or is geared.
+- A futures or derivative overlay, where notional and market value diverge.
+- Any near-riskless asset: short-dated gilts, money market funds, collateral.
+
+Anywhere &Sigma; has a small row and the active weight against it is not small,
+the naive decomposition will quietly under-attribute.
+
+!!! warning "An honest caveat"
+    The two decompositions are not simply right and wrong in every case. They
+    answer different counterfactuals.
+
+    The naive one asks *"if I scale this active position on its own, what happens
+    to tracking error?"* The rotated one asks *"if I scale this holding, funded
+    out of the benchmark, what happens?"* The second is what actually happens
+    when you trade, which is why it is the better default &mdash; but they do
+    genuinely differ.
+
+    You can see the difference without any cash at all. Take a portfolio with two
+    stock tilts and everything else at benchmark weight. The naive decomposition
+    gives exactly zero to every name held at benchmark weight. The rotated one
+    does not, because in its counterfactual those holdings are funded against the
+    index too &mdash; on our data they collectively carry about &minus;0.5
+    percentage points of the tracking error.
+
+    Know which question you are answering. The failure to avoid is not picking the
+    wrong one; it is running the naive decomposition on a portfolio holding cash
+    and never noticing that the largest position in the report has vanished.
+
+## Do both, and compare
+
+Build the absolute decomposition and the active one side by side. The two
+rankings are often strikingly different, because an overweight in a
+low-volatility name can still be a large active bet.
+
+Then add 5% cash to your own portfolio and run it both ways. The totals will
+agree; watch where the attribution moves.

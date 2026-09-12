@@ -294,6 +294,44 @@ def _bias_ewma(c):
     return float(A.bias_statistic_ewma(_port_return_series(c), lam=0.94)["bias"])
 
 
+# --- module 4: the cash trap ------------------------------------------------
+# A portfolio holding 95% of the BENCHMARK weights plus 5% cash. The only
+# active decision is the cash, so it must carry all of the tracking error - and
+# the naive decomposition says it carries none of it. See
+# model.active_space_covariance for why.
+CASH_WEIGHT = 0.05
+
+
+def _with_cash(names, S_stocks, wb_stocks, wp_stocks):
+    """Append cash as an asset: zero variance, zero covariance with everything."""
+    n = len(names)
+    S = np.zeros((n + 1, n + 1))
+    S[:n, :n] = np.asarray(S_stocks, dtype=float)
+    labels = list(names) + ["CASH"]
+    Sdf = pd.DataFrame(S, index=labels, columns=labels)
+    wb = np.append(np.asarray(wb_stocks, dtype=float), 0.0)
+    wp = np.append(np.asarray(wp_stocks, dtype=float) * (1 - CASH_WEIGHT), CASH_WEIGHT)
+    return Sdf, wb, wp
+
+
+def _cash_te(c):
+    """TE of 95% of the benchmark plus 5% cash. Should be 5% of benchmark vol."""
+    r = M.returns(c["px"], "weekly")
+    S = M.cov_matrix(r)
+    Sdf, wb, wp = _with_cash(c["names"], S, c["wb"], c["wb"])
+    return float(100 * M.tracking_error(wp, wb, Sdf, "weekly"))
+
+
+def _cash_ctr(c):
+    """Cash's contribution to TE for 95% of the joiner's own portfolio plus 5%
+    cash, decomposed in active space. Zero under the naive decomposition."""
+    r = M.returns(c["px"], "weekly")
+    S = M.cov_matrix(r)
+    Sdf, wb, wp = _with_cash(c["names"], S, c["wb"], c["w"])
+    rc = M.active_risk_contributions(wp, wb, Sdf, "weekly")
+    return float(100 * rc["ctr"].loc["CASH"])
+
+
 CHECKS: dict[str, Check] = {ck.id: ck for ck in [
     Check("m1_no_history", "1", "Working from the raw file: how many of the 100 "
           "names have no price history going back as far as 3 January 2005, the "
@@ -326,6 +364,19 @@ CHECKS: dict[str, Check] = {ck.id: ck for ck in [
     Check("m4_top_ctr", "4", "Which holding contributes the MOST to your total risk? "
           "(ticker)", "text", _top_contributor,
           "Contribution to risk, not weight. CTR_i = w_i * (S w)_i / sigma."),
+    Check("m4_cash_te", "4", "Now hold 95% of the BENCHMARK weights and 5% cash. "
+          "What is that portfolio's annualised tracking error (%)?", "percent", _cash_te,
+          "Cash is an extra asset with zero variance and zero covariance with "
+          "everything. Work out the active weights and use the same formula as "
+          "before. The answer should be exactly 5% of the benchmark volatility."),
+    Check("m4_cash_ctr", "4", "Take 95% of YOUR portfolio weights plus 5% cash. "
+          "Using the active-space (rotated) covariance matrix, what does the cash "
+          "position contribute to tracking error (%)? It can be negative.",
+          "percent", _cash_ctr,
+          "Rotate first: Sigma~ = Sigma - Cov(r_i,r_b) - Cov(r_j,r_b) + Var(r_b). "
+          "Then decompose with PORTFOLIO weights, not active weights. If you get "
+          "exactly zero, you decomposed the unrotated matrix.",
+          0.05),
     Check("m5_ewma_94", "5", "Annualised portfolio volatility using an EWMA covariance "
           "with lambda = 0.94 (%)", "percent", _ewma_vol(0.94),
           "Scale each return row by sqrt of its weight before forming R'R. Half-life is about 11 weeks."),

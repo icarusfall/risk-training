@@ -181,3 +181,54 @@ def composite_index(px: pd.DataFrame, cols: list[str],
         w = w / w.sum()
         idx_ret = (r * w).sum(axis=1, min_count=1)
     return (1 + idx_ret.fillna(0.0)).cumprod() * 100.0
+
+
+# --------------------------------------------------------------------------- #
+# active space (module 4)
+# --------------------------------------------------------------------------- #
+def active_space_covariance(S, wb) -> np.ndarray:
+    """Rotate a covariance matrix into BENCHMARK-RELATIVE space.
+
+        Sigma~_ij = Cov(r_i - r_b, r_j - r_b)
+                  = Sigma_ij - Cov(r_i, r_b) - Cov(r_j, r_b) + Var(r_b)
+
+    Why this exists, and it is not a nicety. Tracking error computed the usual
+    way - active weights against the plain matrix - gives the correct TOTAL.
+    But decompose that total per asset and any holding with zero absolute risk
+    gets a contribution of exactly zero, because its row of Sigma is zero.
+
+    Cash is the case that shows it up. Hold 95% of the index and 5% cash and the
+    only active decision you have made is the cash; yet the naive decomposition
+    reports 100% of the tracking error coming from the stocks and nothing from
+    the cash. Rotate first and it reports the opposite, which is right.
+
+    The intuition: relative to a benchmark, cash is not riskless. Holding cash
+    instead of the index is a SHORT POSITION IN THE INDEX, and r_cash - r_b is
+    about as volatile as the index itself.
+
+    Decompose with PORTFOLIO weights against the rotated matrix, not active
+    weights - the rotation has already taken the benchmark out.
+    """
+    S = np.asarray(S, dtype=float)
+    w = np.asarray(wb, dtype=float).reshape(-1)
+    cov_ib = S @ w                      # Cov(r_i, r_b) for each asset
+    var_b = float(w @ S @ w)
+    return S - cov_ib[:, None] - cov_ib[None, :] + var_b
+
+
+def active_risk_contributions(wp, wb, S, freq: str | None = None) -> pd.DataFrame:
+    """Contributions to TRACKING ERROR, done properly.
+
+    Rotates into active space, then applies the ordinary Euler decomposition to
+    the portfolio weights. Contributions still sum to the tracking error, but
+    they land on the positions that actually caused it.
+    """
+    idx = S.index if isinstance(S, pd.DataFrame) else range(len(wp))
+    S_rot = active_space_covariance(S, wb)
+    w = np.asarray(wp, dtype=float).reshape(-1)
+    sig = np.sqrt(max(w @ S_rot @ w, 1e-300))
+    mctr = (S_rot @ w) / sig
+    ctr = w * mctr
+    scale = np.sqrt(ANNUALISATION[freq]) if freq else 1.0
+    return pd.DataFrame({"weight": w, "mctr": mctr * scale, "ctr": ctr * scale,
+                         "pct_of_te": ctr / sig}, index=idx)
