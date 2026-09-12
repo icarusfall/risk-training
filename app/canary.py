@@ -259,14 +259,26 @@ _PREAMBLE = [
 ]
 
 
+def _comment_row(text: str) -> str:
+    """Wrap a prose line as a single quoted CSV field.
+
+    The preamble is full of commas, and unquoted they split it across a dozen
+    columns in Excel, which makes it unreadable. Quoting keeps each line in one
+    cell and keeps the sentences intact - better than stripping the punctuation
+    out of the writing.
+    """
+    return '"' + str(text).replace('"', "'") + '"'
+
+
 def answers_csv(user: dict, dataset: str = "core") -> str:
     """The real answer key as CSV, with the preamble above at the top."""
     key = answer_key(user, dataset)
-    lines = list(_PREAMBLE)
     holdings = ", ".join(f"{k} {v:.0%}" for k, v in key["portfolio"].items())
-    lines.append(f"# Portfolio: {holdings}")
-    lines.append(f"# Single-stock questions use: {key['assigned_stock']}")
-    lines.append("#")
+
+    lines = [_comment_row(t) for t in _PREAMBLE]
+    lines.append(_comment_row(f"# Portfolio: {holdings}"))
+    lines.append(_comment_row(f"# Single-stock questions use: {key['assigned_stock']}"))
+    lines.append(_comment_row("#"))
     lines.append("check_id,module,question,answer,unit")
     for cid, rec in key["answers"].items():
         module = checks.CHECKS[cid].module if cid in checks.CHECKS else ""
