@@ -8,6 +8,39 @@ time: 90 min
 
 This is the core of the exercise. Everything after it is a variation.
 
+## Why covariance, and why it is nearly enough
+
+A covariance between two sets of returns captures both how much each varies by
+itself, *and* the correlation between them. In fact you can define a covariance
+exactly that way:
+
+<div class="formula">
+&sigma;<sub>ij</sub> = &sigma;<sub>i</sub> &times; &sigma;<sub>j</sub> &times; &rho;<sub>ij</sub>
+</div>
+
+the product of each stock's standard deviation and the correlation between them
+&mdash; a number running from &minus;1 to +1, representing how much they move
+with respect to each other.
+
+So it is a handy **portmanteau** measure for each pair, capturing three separate
+bits of information in one number. Note what happens on the diagonal, where a
+stock meets itself: the correlation is 1, so the covariance collapses to
+&sigma;<sub>i</sub>&sup2;, the plain variance. The same number does both jobs.
+
+Once you have this for every possible pair of stocks, you have basically
+captured everything &mdash; almost everything, until we move away from Normal
+land &mdash; about the risk of any combination of these stocks. Any portfolio at
+all, including ones nobody has thought of yet.
+
+In a sense, all a risk model **is** is a covariance matrix, calculated in some
+way. Modules 5, 7, 8 and 9 are four different ways of calculating one. They
+disagree completely about the method and not at all about the object.
+
+And the way to retrieve a single risk number from the model is to multiply your
+chosen portfolio weights by the covariance matrix. Although, as you will see,
+you actually multiply by the weights **twice** &mdash; once vertically and once
+horizontally.
+
 ## What you are building
 
 For N stocks, &Sigma; is an N&times;N matrix where the entry in row *i*, column
