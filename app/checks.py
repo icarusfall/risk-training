@@ -205,11 +205,16 @@ def _var_historical(c):
 # computed there. Note the count below is NOT the same set as core's
 # exclusions even though both happen to number 19: core removes two names on
 # data quality before it ever tests their history length.
-M1_START = "2005-01-01"
+# The first TRADING day of 2005, not 1 January - that was a Saturday and New
+# Year's Day besides, so there is no row for it and a question naming it sends
+# people looking for one. No name in the panel begins in early January 2005, so
+# the boundary is unambiguous either way and the answer is the same.
+M1_START = "2005-01-03"
 
 
 def _n_no_history(c):
-    """How many of the 100 names have no price back to the start of 2005."""
+    """How many of the 100 names have no price back to the first trading day
+    of 2005."""
     px = datasets.build("raw").prices
     firsts = px.apply(lambda col: col.first_valid_index())
     return float((firsts > pd.Timestamp(M1_START)).sum())
@@ -291,10 +296,12 @@ def _bias_ewma(c):
 
 CHECKS: dict[str, Check] = {ck.id: ck for ck in [
     Check("m1_no_history", "1", "Working from the raw file: how many of the 100 "
-          "names have no price history going back as far as 1 January 2005?",
+          "names have no price history going back as far as 3 January 2005, the "
+          "first trading day of that year?",
           "number", _n_no_history,
-          "One rule, applied to every column: does it have a price at the start of "
-          "2005 or not? The first_date column on the Universe tab is the quick way, "
+          "One rule, applied to every column: does it have a price on or before "
+          "3 January 2005 or not? The first_date column on the Universe tab is the "
+          "quick way, "
           "or COUNT each price column."),
     Check("m1_scale_break", "1", "One name's price falls by a factor of about ten "
           "and never recovers. Which ticker is it?", "text", _scale_break_ticker,
