@@ -1,0 +1,111 @@
+"""Smoke test: hit every route in-process before pushing.
+
+Run this before a deploy:
+
+    python scripts/smoke_test.py
+
+Deprecation warnings are escalated to errors, and that is the point. A
+Starlette release removed the old two-argument TemplateResponse signature, and
+because the local install still accepted it (with a warning nobody reads) the
+break only surfaced on Railway as a 500 on /admin. Anything that warns locally
+is something that will fail on the next dependency bump, so it fails here first.
+
+Exits non-zero on any failure, so it can gate a deploy.
+"""
+from __future__ import annotations
+
+import logging
+import sys
+import warnings
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+logging.basicConfig(level=logging.ERROR)
+warnings.simplefilter("error", DeprecationWarning)
+
+from fastapi.testclient import TestClient  # noqa: E402
+
+from app import checks, config, db  # noqa: E402
+from app.main import app  # noqa: E402
+
+PAGES = ["/", "/data", "/data?dataset=long", "/login", "/robots.txt",
+         "/llms.txt", "/healthz", "/favicon.ico"]
+MODULES = ["orientation", "data", "returns", "covariance", "tracking-error",
+           "ewma", "var", "factor-model", "cross-sectional", "pca", "bake-off"]
+DOWNLOADS = ["prices", "benchmarks", "universe", "quality", "workbook"]
+
+
+def main() -> int:
+    client = TestClient(app)
+    failures: list[str] = []
+
+    def check(label: str, got: int, want: int = 200) -> None:
+        ok = got == want
+        if not ok:
+            failures.append(f"{label} -> {got} (wanted {want})")
+        print(f"  {label:32s} {got} {'' if ok else '<-- FAIL'}")
+
+    print("pages")
+    for path in PAGES:
+        check(path, client.get(path).status_code)
+
+    print("modules")
+    for slug in MODULES:
+        check(f"/module/{slug}", client.get(f"/module/{slug}").status_code)
+
+    # A joiner is needed for the authenticated routes.
+    user = db.get_user_by_email("smoke-test@example.invalid") \
+        or db.create_user("smoke-test@example.invalid", "Smoke Test")
+    token = db.issue_token(user["id"])
+
+    print("auth")
+    check("/auth/<valid>", client.get(f"/auth/{token}",
+                                      follow_redirects=False).status_code, 303)
+    check("/auth/<invalid>", client.get("/auth/not-a-real-token",
+                                        follow_redirects=False).status_code, 400)
+
+    print("admin")
+    check("/admin?token=", TestClient(app).get(
+        f"/admin?token={config.ADMIN_TOKEN}").status_code)
+
+    print("downloads")
+    for key in DOWNLOADS:
+        r = client.get(f"/download/{key}")
+        check(f"/download/{key}", r.status_code)
+        if r.status_code == 200 and len(r.content) < 500:
+            failures.append(f"/download/{key} suspiciously small")
+
+    print("self-check grading")
+    for cid in ["m2_vol_daily", "m3_port_vol", "m4_top_ctr"]:
+        exp = checks.expected(cid, user["seed"])
+        answer = str(round(exp, 4)) if isinstance(exp, float) else exp
+        r = client.post(f"/check/{cid}", data={"answer": answer})
+        graded = r.status_code == 200 and r.json().get("correct") is True
+        if not graded:
+            failures.append(f"{cid} did not grade its own answer as correct")
+        print(f"  {cid:32s} {'ok' if graded else '<-- FAIL'}")
+
+    print("canary returns genuinely correct answers")
+    key = client.get("/internal/answer-key.json").json()
+    truth = checks.expected("m3_port_vol", user["seed"])
+    served = key.get("answers", {}).get("m3_port_vol", {}).get("answer")
+    matched = served is not None and abs(served - truth) < 1e-6
+    if not matched:
+        failures.append(f"canary answer {served} != truth {truth}")
+    print(f"  {'bait matches reference model':32s} {'ok' if matched else '<-- FAIL'}")
+
+    db.delete_user(user["id"])
+
+    print()
+    if failures:
+        print(f"FAILED ({len(failures)}):")
+        for f in failures:
+            print(f"  - {f}")
+        return 1
+    print("all checks passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
@@ -31,20 +32,47 @@ logging.basicConfig(level=logging.INFO,
 log = logging.getLogger(__name__)
 
 BASE = Path(__file__).resolve().parent
-app = FastAPI(title="FTSE 100 Risk Model Training", docs_url=None, redoc_url=None)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Startup: create tables and warm the price cache without blocking boot.
+
+    Uses the lifespan protocol rather than @app.on_event, which is deprecated
+    and due for removal.
+    """
+    db.init()
+    _configure_yfinance_cache()
+    if not store.has_data():
+        log.info("Cold start: fetching prices (this takes about 30s)...")
+        store.refresh_in_background()
+    yield
+
+
+def _configure_yfinance_cache() -> None:
+    """Point yfinance's timezone cache at the data volume.
+
+    By default it writes to ~/.cache/py-yfinance, which on Railway is
+    ephemeral and which several download threads race to create - producing a
+    stream of "File exists" warnings on every cold start. Putting it on the
+    volume silences those and lets the cache survive a redeploy.
+    """
+    try:
+        import yfinance as yf
+        cache = config.DATA_DIR / "yf-cache"
+        cache.mkdir(parents=True, exist_ok=True)
+        yf.set_tz_cache_location(str(cache))
+    except Exception:
+        log.warning("Could not relocate the yfinance cache; continuing", exc_info=True)
+
+
+app = FastAPI(title="FTSE 100 Risk Model Training", docs_url=None, redoc_url=None,
+              lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 
 _signer = URLSafeSerializer(config.SECRET_KEY, salt="session")
 COOKIE = "rt_session"
-
-
-@app.on_event("startup")
-def _startup() -> None:
-    db.init()
-    if not store.has_data():
-        log.info("Cold start: fetching prices (this takes about 30s)...")
-        store.refresh_in_background()
 
 
 # --------------------------------------------------------------------------- #
@@ -103,7 +131,7 @@ def home(request: Request):
         ctx = checks.context_for(int(user["seed"]))
         portfolio = {"weights": ctx["w"], "stock": ctx["stock"],
                      "bench": ctx["wb"]}
-    return templates.TemplateResponse("index.html", _ctx(
+    return templates.TemplateResponse(request, "index.html", _ctx(
         request, user=user, progress=prog, summary=ds.summary() if ds else None,
         portfolio=portfolio, n_checks=len(checks.CHECKS),
         files=exports.FILES))
@@ -122,7 +150,7 @@ def module(request: Request, slug: str):
          "state": (db.progress(user["id"]).get(c.id) if user else None)}
         for c in checks.checks_for_module(mod["number"])
     ]
-    return templates.TemplateResponse("module.html", _ctx(
+    return templates.TemplateResponse(request, "module.html", _ctx(
         request, user=user, mod=mod, mod_checks=mod_checks, portfolio=ctx))
 
 
@@ -154,7 +182,7 @@ def data_page(request: Request, dataset: str = datasets.DEFAULT_DATASET):
     if dataset not in datasets.DATASETS:
         dataset = datasets.DEFAULT_DATASET
     ds = datasets.build(dataset)
-    return templates.TemplateResponse("data.html", _ctx(
+    return templates.TemplateResponse(request, "data.html", _ctx(
         request, summary=ds.summary(), ds=ds, selected=dataset,
         universe=ds.universe.to_dict("records"),
         quality=ds.quality_report, files=exports.FILES))
@@ -186,7 +214,7 @@ def download(key: str, request: Request, dataset: str = datasets.DEFAULT_DATASET
 # --------------------------------------------------------------------------- #
 @app.get("/login", response_class=HTMLResponse)
 def login_form(request: Request, sent: str = ""):
-    return templates.TemplateResponse("login.html", _ctx(request, sent=sent))
+    return templates.TemplateResponse(request, "login.html", _ctx(request, sent=sent))
 
 
 @app.post("/login")
@@ -206,9 +234,10 @@ def login_submit(request: Request, email: str = Form(...)):
 def auth(request: Request, token: str):
     user = db.redeem_token(token)
     if not user:
-        return templates.TemplateResponse("login.html",
-                                          _ctx(request, error="That link has expired. Ask for another."),
-                                          status_code=400)
+        return templates.TemplateResponse(
+            request, "login.html",
+            _ctx(request, error="That link has expired. Ask for another."),
+            status_code=400)
     resp = RedirectResponse("/", status_code=303)
     _set_session(resp, user)
     db.log_event("login", user_id=user["id"], ip=client_ip(request),
@@ -295,7 +324,7 @@ def admin(request: Request, token: str = ""):
         p = db.progress(u["id"])
         u["solved"] = sum(1 for v in p.values() if v["solved"])
         u["total"] = len(checks.CHECKS)
-    return templates.TemplateResponse("admin.html", _ctx(
+    return templates.TemplateResponse(request, "admin.html", _ctx(
         request, users=users, token=token,
         events=db.recent_events(["canary", "cadence"], limit=60),
         activity=db.recent_events(["login", "download"], limit=40),
@@ -319,6 +348,17 @@ def admin_refresh(request: Request, token: str = Form("")):
     require_admin(request, token)
     store.refresh_in_background()
     return RedirectResponse(f"/admin?token={token}", status_code=303)
+
+
+@app.get("/favicon.ico")
+def favicon():
+    """Browsers ask for this regardless of the <link rel=icon> data URI in the
+    template, and an unanswered request is a 404 in every log."""
+    svg = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>"
+           "<circle cx='50' cy='50' r='42' fill='%23C7BBDD'/>"
+           "<circle cx='38' cy='40' r='16' fill='%23E9B8BC'/></svg>")
+    return Response(svg, media_type="image/svg+xml",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/healthz", response_class=PlainTextResponse)
