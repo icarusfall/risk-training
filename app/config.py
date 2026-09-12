@@ -56,7 +56,11 @@ ADMIN_TOKEN = _env("ADMIN_TOKEN", "letmein")
 
 # Outbound email for magic links + canary alerts (Resend). Unset => log to stdout.
 RESEND_API_KEY = _env("RESEND_API_KEY", "")
-MAIL_FROM = _env("MAIL_FROM", "risk-training@example.com")
+# Resend's sandbox sender works with no domain setup, but ONLY delivers to the
+# Resend account owner's own address. Good enough for admin alerts; joiner
+# magic links to other domains are rejected, which is why /admin shows the
+# link on screen for forwarding. Verify a domain to email joiners directly.
+MAIL_FROM = _env("MAIL_FROM", "onboarding@resend.dev")
 
 # Tolerance for marking a self-check answer correct (relative).
 CHECK_RTOL = float(_env("CHECK_RTOL", "0.02"))

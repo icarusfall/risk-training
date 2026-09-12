@@ -316,9 +316,10 @@ def require_admin(request: Request, token: str = "") -> bool:
     raise HTTPException(403, "admin only")
 
 
-@app.get("/admin", response_class=HTMLResponse)
-def admin(request: Request, token: str = ""):
-    require_admin(request, token)
+def _admin_page(request: Request, token: str, **extra):
+    """Render /admin. Shared so POST handlers can show a result without a
+    redirect - a magic-link token has no business sitting in the URL bar or in
+    browser history."""
     users = db.list_users()
     for u in users:
         p = db.progress(u["id"])
@@ -328,7 +329,13 @@ def admin(request: Request, token: str = ""):
         request, users=users, token=token,
         events=db.recent_events(["canary", "cadence"], limit=60),
         activity=db.recent_events(["login", "download"], limit=40),
-        base_url=config.BASE_URL))
+        base_url=config.BASE_URL, **extra))
+
+
+@app.get("/admin", response_class=HTMLResponse)
+def admin(request: Request, token: str = ""):
+    require_admin(request, token)
+    return _admin_page(request, token)
 
 
 @app.post("/admin/users")
@@ -340,7 +347,23 @@ def admin_add(request: Request, email: str = Form(...), name: str = Form(""),
     sent = mail.send_magic_link(user["email"], user["name"], link)
     if not sent:
         log.warning("Magic link for %s: %s", user["email"], link)
-    return RedirectResponse(f"/admin?token={token}", status_code=303)
+    return _admin_page(request, token, new_link={
+        "email": user["email"], "name": user["name"], "url": link, "emailed": sent})
+
+
+@app.post("/admin/relink")
+def admin_relink(request: Request, user_id: int = Form(...), token: str = Form("")):
+    """Issue a fresh 72-hour link for an existing joiner."""
+    require_admin(request, token)
+    user = db.get_user(user_id)
+    if not user:
+        raise HTTPException(404, "no such joiner")
+    link = f"{config.BASE_URL}/auth/{db.issue_token(user['id'])}"
+    sent = mail.send_magic_link(user["email"], user["name"], link)
+    if not sent:
+        log.warning("Magic link for %s: %s", user["email"], link)
+    return _admin_page(request, token, new_link={
+        "email": user["email"], "name": user["name"], "url": link, "emailed": sent})
 
 
 @app.post("/admin/refresh")

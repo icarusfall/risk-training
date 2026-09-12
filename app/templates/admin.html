@@ -3,6 +3,34 @@
 {% block content %}
 <h1>Admin</h1>
 
+{% if new_link %}
+<div class="card" style="background:var(--sage-wash);border-color:#CFE0C8">
+  <h3 style="margin-top:0">
+    Link for {{ new_link.name or new_link.email }}
+    {% if new_link.emailed %}<span class="pill good">emailed</span>
+    {% else %}<span class="pill warn">not emailed &mdash; forward it yourself</span>{% endif %}
+  </h3>
+  {% if not new_link.emailed %}
+  <p style="margin-bottom:.6rem;font-size:.92rem">
+    Resend refused delivery to <code>{{ new_link.email }}</code>. With the sandbox
+    sender (<code>onboarding@resend.dev</code>) it will only deliver to your own
+    Resend account address. Copy the link below and send it on, or verify a
+    domain to email joiners directly.
+  </p>
+  {% endif %}
+  <div class="check-row">
+    <input type="text" id="newlink" value="{{ new_link.url }}" readonly
+           style="max-width:none;flex:1;min-width:260px;font-size:.82rem">
+    <button class="btn small" type="button" onclick="
+      var f=document.getElementById('newlink'); f.select();
+      navigator.clipboard.writeText(f.value).then(function(){
+        var b=event.target; b.textContent='Copied'; setTimeout(function(){b.textContent='Copy';},1500);
+      });">Copy</button>
+  </div>
+  <p class="meta-line" style="margin:.6rem 0 0">Valid for 72 hours.</p>
+</div>
+{% endif %}
+
 <div class="grid two" style="align-items:start">
   <div class="card">
     <h3 style="margin-top:0">Add a joiner</h3>
@@ -33,14 +61,21 @@
 <div class="card">
   <div class="table-scroll">
     <table>
-      <thead><tr><th>Name</th><th>Email</th><th class="num">Cleared</th><th>Added</th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th class="num">Cleared</th><th>Added</th><th></th></tr></thead>
       <tbody>
       {% for u in users %}
         <tr>
-          <td>{{ u.name or "-" }}</td>
+          <td>{{ u.name or "-" }}{% if u.is_admin %} <span class="pill soft">admin</span>{% endif %}</td>
           <td><code>{{ u.email }}</code></td>
           <td class="num">{{ u.solved }} / {{ u.total }}</td>
           <td class="meta-line">{{ u.created_at[:10] }}</td>
+          <td style="text-align:right">
+            <form method="post" action="/admin/relink" style="margin:0">
+              <input type="hidden" name="token" value="{{ token }}">
+              <input type="hidden" name="user_id" value="{{ u.id }}">
+              <button class="btn ghost small" type="submit">New link</button>
+            </form>
+          </td>
         </tr>
       {% endfor %}
       </tbody>
