@@ -50,7 +50,26 @@ like; over daily horizons they differ in the fourth decimal place.
     ```
     =Prices!B3:CD5407/Prices!B2:CD5406-1
     ```
-    Keep the date column alongside. You will need it constantly.
+
+    **Label your `ReturnsD` tab properly.** Two things, and both will save you
+    from a bug later:
+
+    - A **date column** down the left. You will need it constantly &mdash; for
+      filtering to Wednesdays, for cutting windows, for finding a crisis.
+    - A **top row of tickers**, copied across from the `Prices` tab. When you
+      later feed a returns block into a covariance matrix and then multiply by a
+      weight vector, everything depends on the columns being in the order you
+      think they are. Labels are how you check.
+
+    **On dates:** conventionally a daily return is labelled with its **end**
+    date. The return from Monday's close to Tuesday's close is Tuesday's return,
+    because Tuesday is when you would have earned it. So your first return sits
+    against the **second** date in the price file, not the first, and your
+    `ReturnsD` tab has exactly one row fewer than `Prices`.
+
+    That sounds obvious written down. It is also the single most common way to
+    end up one row out, which puts every stock's returns against the wrong date
+    and quietly wrecks every correlation in the model.
 
 ## Weekly: use Wednesdays
 
@@ -116,6 +135,11 @@ is not. If you ever find yourself multiplying a volatility by 252, stop.
     Use `STDEV.S` (sample, divides by n&minus;1), not `STDEV.P`. With thousands of
     observations it makes no practical difference, but the sample estimator is
     what everyone else means, and matching convention matters more than you think.
+
+    Some particularly ancient members of the team still insist on plain
+    `STDEV`, which is ambiguous about which one it means. Excel covers for them
+    by defaulting it to `STDEV.S`, so they have got away with it for about
+    twenty-five years and see no reason to stop now.
 
 ## Now the interesting bit: they will not agree
 
