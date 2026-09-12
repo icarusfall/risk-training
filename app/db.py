@@ -77,10 +77,23 @@ def init() -> None:
 # users
 # --------------------------------------------------------------------------- #
 def create_user(email: str, name: str = "", is_admin: bool = False) -> dict:
+    """Create a joiner, or return the existing one.
+
+    Whoever is named in ADMIN_EMAIL is promoted automatically. On a fresh
+    deployment the database is empty, so the only way in is /admin?token=...;
+    without this, adding yourself through that form would create an ordinary
+    account with no Admin link and no obvious way to fix it.
+    """
     email = email.strip().lower()
+    if config.ADMIN_EMAIL and email == config.ADMIN_EMAIL.strip().lower():
+        is_admin = True
     with conn() as c:
         existing = c.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         if existing:
+            if is_admin and not existing["is_admin"]:
+                c.execute("UPDATE users SET is_admin=1 WHERE id=?", (existing["id"],))
+                return dict(c.execute("SELECT * FROM users WHERE id=?",
+                                      (existing["id"],)).fetchone())
             return dict(existing)
         # Seed drives that joiner's personal test portfolio, so two people
         # cannot simply copy each other's answers.
