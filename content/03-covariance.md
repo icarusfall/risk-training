@@ -159,7 +159,7 @@ free lunch in the business. Compute both and look at the difference.
 Now try it: set one weight to 100% and the rest to zero. You should get that
 stock's own volatility back. If you do not, your alignment is wrong.
 
-## A number to sit with
+## A number to consider
 
 You estimated 3,321 parameters from 1,115 observations. Three times as many
 unknowns as data points.

@@ -106,7 +106,8 @@ interesting.
     central trade-off in all of risk modelling.
 
     In practice the factor model often forecasts **better out of sample**, despite
-    being a worse description of the past. That is worth sitting with.
+    being a worse description of the past. It is a counter-intuitive result,
+    and an important one.
 
 ## Things to look at
 

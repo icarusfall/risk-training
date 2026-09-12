@@ -298,7 +298,7 @@ conflates cheapness with payout policy and with quality, and it drops to zero fo
 any company that suspends its dividend &mdash; which tends to happen precisely
 when the stock has become cheap.
 
-This is worth sitting with rather than skipping past. **Exposure quality is the
+Do not skip past this. **Exposure quality is the
 binding constraint on a cross-sectional model.** The regression machinery is a
 morning's work; getting clean, point-in-time, survivorship-free fundamentals is
 what the vendors actually charge for.
