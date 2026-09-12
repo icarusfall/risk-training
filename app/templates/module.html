@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}{{ mod.title }}{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+
+{% block content %}
+<p class="meta-line"><a href="/">&larr; All modules</a></p>
+
+<div style="display:flex;align-items:baseline;gap:.8rem;flex-wrap:wrap">
+  <span class="pill soft">Module {{ mod.number }}</span>
+  {% if mod.time %}<span class="pill">{{ mod.time }}</span>{% endif %}
+</div>
+<h1 style="margin-top:.6rem">{{ mod.title }}</h1>
+{% if mod.summary %}<p style="font-size:1.08rem;color:var(--ink-soft)">{{ mod.summary }}</p>{% endif %}
+
+<hr>
+
+<div class="lesson">
+  {{ mod.html|safe }}
+</div>
+
+{% if mod_checks %}
+<hr>
+<h2>Check your answers</h2>
+{% if not user %}
+  <div class="card" style="background:var(--butter-wash);border-color:#EEDFB8">
+    <p style="margin:0"><a href="/login">Sign in</a> to get your own portfolio and have your answers marked.</p>
+  </div>
+{% else %}
+  <p class="meta-line">
+    Marked to within {{ (100*2)|int / 100 }}% relative tolerance, so small rounding
+    differences are fine. We tell you which way you are out, never the answer.
+  </p>
+  {% for mc in mod_checks %}
+    {% set st = mc.state %}
+    <div class="check {% if st and st.solved %}solved{% endif %}" data-check="{{ mc.check.id }}">
+      <div class="q">
+        {{ mc.prompt }}
+        {% if st and st.solved %}<span class="pill good">cleared{% if st.first_try %} &middot; first try{% endif %}</span>{% endif %}
+      </div>
+      <div class="check-row">
+        <input type="text" name="answer" placeholder="{% if mc.check.unit == 'text' %}e.g. HSBA{% else %}e.g. 18.42{% endif %}"
+               autocomplete="off" inputmode="{% if mc.check.unit == 'text' %}text{% else %}decimal{% endif %}">
+        <button class="btn small" type="button">Check</button>
+        {% if mc.check.unit == 'percent' %}<span class="meta-line">as a percentage, e.g. <code>18.42</code></span>{% endif %}
+      </div>
+      <div class="feedback"></div>
+    </div>
+  {% endfor %}
+{% endif %}
+{% endif %}
+
+<hr>
+<div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+  {% set ns = namespace(prev=none, next=none, found=false) %}
+  {% for m in modules %}
+    {% if m.slug == mod.slug %}{% set ns.found = true %}
+    {% elif not ns.found %}{% set ns.prev = m %}
+    {% elif ns.next is none %}{% set ns.next = m %}
+    {% endif %}
+  {% endfor %}
+  <div>{% if ns.prev %}<a class="btn ghost" href="/module/{{ ns.prev.slug }}">&larr; {{ ns.prev.title }}</a>{% endif %}</div>
+  <div>{% if ns.next %}<a class="btn" href="/module/{{ ns.next.slug }}">{{ ns.next.title }} &rarr;</a>{% endif %}</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.check').forEach(function (box) {
+  var input = box.querySelector('input');
+  var btn   = box.querySelector('button');
+  var out   = box.querySelector('.feedback');
+
+  function submit() {
+    var val = (input.value || '').trim();
+    if (!val) { return; }
+    btn.disabled = true;
+    out.className = 'feedback';
+    out.textContent = 'Checking…';
+
+    var body = new FormData();
+    body.append('answer', val);
+
+    fetch('/check/' + box.dataset.check, { method: 'POST', body: body })
+      .then(function (r) {
+        if (r.status === 401) { throw new Error('Please sign in again.'); }
+        return r.json();
+      })
+      .then(function (d) {
+        if (d.correct) {
+          box.classList.add('solved');
+          out.className = 'feedback ok';
+          out.textContent = 'That is it. ✓';
+        } else {
+          out.className = 'feedback no';
+          var msg = d.direction ? ('Not quite — your number is ' + d.direction + '.') : 'Not quite.';
+          if (d.close) { msg += ' You are close, so check your annualisation.'; }
+          out.textContent = msg;
+          if (d.hint) {
+            var h = document.createElement('span');
+            h.className = 'hint';
+            h.textContent = d.hint;
+            out.appendChild(h);
+          }
+        }
+      })
+      .catch(function (e) {
+        out.className = 'feedback no';
+        out.textContent = e.message || 'Something went wrong.';
+      })
+      .finally(function () { btn.disabled = false; });
+  }
+
+  btn.addEventListener('click', submit);
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); submit(); }
+  });
+});
+</script>
+{% endblock %}

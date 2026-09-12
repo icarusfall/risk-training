@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<h1>Admin</h1>
+
+<div class="grid two" style="align-items:start">
+  <div class="card">
+    <h3 style="margin-top:0">Add a joiner</h3>
+    <form method="post" action="/admin/users">
+      <input type="hidden" name="token" value="{{ token }}">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" placeholder="Alex Doe">
+      <label for="email" style="margin-top:.7rem">Email</label>
+      <input type="email" id="email" name="email" required placeholder="alex.doe@lgim.com">
+      <p style="margin:.9rem 0 0"><button class="btn" type="submit">Create and email a link</button></p>
+    </form>
+    <p class="meta-line" style="margin-bottom:0">
+      With no mail key configured, the link is written to the server log instead.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Data</h3>
+    <p class="meta-line">Last refreshed {{ meta.refreshed_at or 'never' }}{% if meta.fetch_seconds %} in {{ meta.fetch_seconds }}s{% endif %}.</p>
+    <form method="post" action="/admin/refresh">
+      <input type="hidden" name="token" value="{{ token }}">
+      <button class="btn ghost" type="submit">Refresh now</button>
+    </form>
+  </div>
+</div>
+
+<h2>Joiners</h2>
+<div class="card">
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th class="num">Cleared</th><th>Added</th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td>{{ u.name or "-" }}</td>
+          <td><code>{{ u.email }}</code></td>
+          <td class="num">{{ u.solved }} / {{ u.total }}</td>
+          <td class="meta-line">{{ u.created_at[:10] }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h2>Flags</h2>
+<div class="card">
+  <p class="meta-line">
+    Soft signals only. Crawlers and prefetchers trip the first kind; a genuinely
+    well-built spreadsheet can trip the second. Both are a reason to chat, not a
+    conclusion.
+  </p>
+  {% if events %}
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>When</th><th>Who</th><th>Signal</th><th>Detail</th></tr></thead>
+      <tbody>
+      {% for e in events %}
+        <tr>
+          <td class="meta-line">{{ e.created_at[:16]|replace("T", " ") }}</td>
+          <td>{{ e.email or "not signed in" }}</td>
+          <td><span class="pill {% if e.kind == 'canary' %}warn{% else %}info{% endif %}">{{ e.kind }}</span></td>
+          <td class="meta-line">{{ e.path or e.detail }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p style="margin-bottom:0">Nothing flagged.</p>
+  {% endif %}
+</div>
+
+<h2>Recent activity</h2>
+<div class="card">
+  <div class="table-scroll" style="max-height:320px;overflow-y:auto">
+    <table>
+      <thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>
+      <tbody>
+      {% for e in activity %}
+        <tr>
+          <td class="meta-line">{{ e.created_at[:16]|replace("T", " ") }}</td>
+          <td>{{ e.email or "-" }}</td>
+          <td><span class="pill">{{ e.kind }}</span> <span class="meta-line">{{ e.detail }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

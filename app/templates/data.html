@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}The data{% endblock %}
+{% block content %}
+<h1>What you are downloading</h1>
+<p style="font-size:1.05rem;color:var(--ink-soft);max-width:72ch">
+  Free market data is never clean. Everything we repaired or removed is listed
+  here &mdash; but Module 1 asks you to find the problems yourself first, so you
+  may prefer to come back to this page afterwards.
+</p>
+
+<div class="grid three" style="margin:1.4rem 0">
+  <div class="card stat"><span class="v">{{ summary.n_stocks }}</span><span class="k">Names included</span></div>
+  <div class="card stat"><span class="v">{{ summary.n_excluded }}</span><span class="k">Names dropped</span></div>
+  <div class="card stat"><span class="v">{{ summary.first_date[:7] }}</span><span class="k">History starts</span></div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Choose your window</h3>
+  <p class="meta-line">Depth and breadth trade off against each other. Pick your poison.</p>
+  {% for key, d in datasets.items() %}
+    <div style="display:flex;gap:.8rem;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--line-soft)">
+      <div style="flex:1">
+        <strong>{{ d.label }}</strong>
+        {% if key == selected %}<span class="pill good">showing</span>{% endif %}
+        <div class="meta-line">{{ d.blurb }}</div>
+      </div>
+      <a class="btn ghost small" href="/data?dataset={{ key }}">View</a>
+      <a class="btn small" href="/download/workbook?dataset={{ key }}">Workbook</a>
+    </div>
+  {% endfor %}
+</div>
+
+<h2>Benchmarks, and why two of them disagree</h2>
+<div class="card">
+  <p>There is no single thing called &ldquo;the index&rdquo;. The file gives you several, and comparing them is the point.</p>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>Series</th><th>What it actually is</th></tr></thead>
+      <tbody>
+        <tr><td><code>^FTSE</code></td><td>FTSE 100 <strong>price</strong> index. No dividends. The longest history.</td></tr>
+        <tr><td><code>CUKX.L</code></td><td>iShares Core FTSE 100 <strong>accumulating</strong> ETF. Dividends reinvested inside the fund, so this genuinely is total return. Regress against this one.</td></tr>
+        <tr><td><code>FTAL.L</code></td><td>SPDR FTSE UK All-Share accumulating ETF. Total return, wider universe.</td></tr>
+        <tr><td><code>ISF.L</code></td><td>iShares Core FTSE 100 <strong>distributing</strong> ETF. Looks like total return. Is not. See Module 1.</td></tr>
+        <tr><td><code>EQUAL_WEIGHT_TR</code></td><td>Equal-weighted basket of the names in your file.</td></tr>
+        <tr><td><code>CAPFIXED_TR</code></td><td>The same names at today&rsquo;s cap weights, held fixed.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h2>The cleaning log</h2>
+{% if quality %}
+<div class="card">
+  <p class="meta-line">Bad prints we repaired, and scale breaks we could not.</p>
+  <div class="table-scroll" style="max-height:340px;overflow-y:auto">
+    <table>
+      <thead><tr><th>Ticker</th><th>Date</th><th class="num">Move</th><th class="num">Ratio</th><th>Verdict</th></tr></thead>
+      <tbody>
+      {% for rep in quality %}
+        {% for s in rep.spikes[:3] %}
+          <tr>
+            <td><code>{{ rep.ticker }}</code></td><td>{{ s.date }}</td>
+            <td class="num">{{ '%+.0f'|format(s.return_pct) }}%</td>
+            <td class="num">&times;{{ s.ratio }}</td>
+            <td><span class="pill info">repaired</span></td>
+          </tr>
+        {% endfor %}
+        {% if rep.spikes|length > 3 %}
+          <tr><td><code>{{ rep.ticker }}</code></td><td colspan="4" class="meta-line">&hellip;and {{ rep.spikes|length - 3 }} more, nearly all on UK bank holidays</td></tr>
+        {% endif %}
+        {% for b in rep.breaks %}
+          <tr>
+            <td><code>{{ rep.ticker }}</code></td><td>{{ b.date }}</td>
+            <td class="num">{{ '%+.0f'|format(b.return_pct) }}%</td>
+            <td class="num">&times;{{ b.ratio }}</td>
+            <td><span class="pill warn">excluded</span></td>
+          </tr>
+        {% endfor %}
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p style="margin:.9rem 0 0">
+    Dropped for bad data: {% for t in summary.excluded.data_quality %}<code>{{ t }}</code> {% endfor %}<br>
+    Dropped for too little history: <span class="meta-line">{{ summary.excluded.short_history|length }} names</span>
+  </p>
+</div>
+{% endif %}
+
+<h2>The universe</h2>
+<div class="card">
+  <div class="table-scroll" style="max-height:460px;overflow-y:auto">
+    <table>
+      <thead><tr><th>Ticker</th><th>Name</th><th>ICB industry</th><th class="num">Mkt cap (&pound;m)</th><th class="num">Weight</th><th>From</th></tr></thead>
+      <tbody>
+      {% for r in universe %}
+        <tr>
+          <td><code>{{ r.yahoo }}</code></td>
+          <td>{{ r.name }}</td>
+          <td><span class="pill">{{ r.industry }}</span></td>
+          <td class="num">{{ '{:,.0f}'.format(r.mcap_gbp_m or 0) }}</td>
+          <td class="num">{{ '%.2f'|format(r.weight_pct or 0) }}%</td>
+          <td class="meta-line">{{ r.first_date }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

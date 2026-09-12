@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Risk Model Training{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <h1>Build your own risk model</h1>
+  <p>
+    Twenty years of FTSE 100 price history, four crises, and a spreadsheet. You will
+    build a covariance matrix from scratch, turn it into a volatility and a tracking
+    error, watch both move as you change the window, and finish with a statistical
+    model whose first principal component turns out to be the market.
+  </p>
+</div>
+
+{% if summary %}
+<div class="grid three" style="margin-bottom:1.6rem">
+  <div class="card stat"><span class="v">{{ summary.n_stocks }}</span><span class="k">Stocks</span></div>
+  <div class="card stat"><span class="v">{{ '{:,}'.format(summary.n_days) }}</span><span class="k">Trading days</span></div>
+  <div class="card stat"><span class="v">{{ summary.first_date[:4] }}&ndash;{{ summary.last_date[:4] }}</span><span class="k">Window</span></div>
+</div>
+{% endif %}
+
+{% if user %}
+  {% set solved = progress.values()|selectattr('solved')|list|length %}
+  <div class="card" style="margin-bottom:1.6rem">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <div>
+        <h3 style="margin:0">Your progress</h3>
+        <p class="meta-line" style="margin:.2rem 0 0">{{ solved }} of {{ n_checks }} checks cleared</p>
+      </div>
+      <div style="flex:1;min-width:180px">
+        <div style="background:var(--paper-deep);border-radius:999px;height:9px;overflow:hidden">
+          <div class="wbar" style="height:9px;border-radius:999px;width:{{ (100*solved/n_checks)|round(0)|int }}%"></div>
+        </div>
+      </div>
+    </div>
+
+    {% if portfolio %}
+    <hr>
+    <h4 style="margin-top:0">Your portfolio</h4>
+    <p class="meta-line">
+      Every joiner gets a different one, so your answers are yours alone. Your
+      single-stock questions use <strong>{{ portfolio.stock }}</strong>.
+    </p>
+    <div class="table-scroll" style="max-height:290px;overflow-y:auto">
+      <table class="wtable">
+        <thead><tr><th>Ticker</th><th class="num">Your weight</th><th class="num">Benchmark</th><th class="num">Active</th><th></th></tr></thead>
+        <tbody>
+        {% for t, w in portfolio.weights.items() %}
+          {% set b = portfolio.bench[t] %}
+          <tr>
+            <td>{{ t }}</td>
+            <td class="num">{{ '%.0f'|format(100*w) }}%</td>
+            <td class="num">{{ '%.1f'|format(100*b) }}%</td>
+            <td class="num" style="color:{{ '#4E7145' if w>b else '#9C5560' }}">{{ '%+.1f'|format(100*(w-b)) }}%</td>
+            <td style="width:110px"><div class="wbar" style="width:{{ (100*w*4)|round(0)|int }}%"></div></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+{% else %}
+  <div class="card" style="margin-bottom:1.6rem;background:var(--butter-wash);border-color:#EEDFB8">
+    <h3 style="margin-top:0">Sign in to get your own portfolio</h3>
+    <p style="margin-bottom:.9rem">
+      Each joiner is assigned a different set of holdings, so the self-checks
+      grade your working rather than someone else's. No password &mdash; we email
+      you a link.
+    </p>
+    <a class="btn" href="/login">Sign in</a>
+  </div>
+{% endif %}
+
+<div class="grid two" style="align-items:start">
+  <div>
+    <h2 style="margin-top:0">The modules</h2>
+    <ul class="module-list">
+      {% for m in modules %}
+      <li>
+        <a class="module-item" href="/module/{{ m.slug }}">
+          <span class="module-num">{{ m.number }}</span>
+          <span class="module-body">
+            <h3>{{ m.title }}</h3>
+            <p>{{ m.summary }}</p>
+            <p style="margin-top:.4rem">
+              {% if m.time %}<span class="pill">{{ m.time }}</span>{% endif %}
+              {% if m.status == 'soon' %}<span class="pill warn">coming soon</span>{% endif %}
+            </p>
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div>
+    <h2 style="margin-top:0">Get the data</h2>
+    <div class="card">
+      <p class="meta-line" style="margin-top:0">
+        Refreshed automatically &mdash; the figures update as the market does, so
+        your answers will drift a little over time. That is deliberate.
+      </p>
+      {% for key, f in files.items() %}
+        <div style="display:flex;gap:.7rem;align-items:center;padding:.55rem 0;border-bottom:1px solid var(--line-soft)">
+          <div style="flex:1;min-width:0">
+            <a href="/download/{{ key }}"><strong>{{ f[0] }}.{{ f[1] }}</strong></a>
+            <div class="meta-line">{{ f[3] }}</div>
+          </div>
+          <a class="btn ghost small" href="/download/{{ key }}">Download</a>
+        </div>
+      {% endfor %}
+      <p style="margin:.9rem 0 0"><a href="/data">What is in it, and what we cleaned &rarr;</a></p>
+    </div>
+
+    <div class="card" style="margin-top:1.1rem;background:var(--sage-wash);border-color:#CFE0C8">
+      <h4 style="margin-top:0">Before you start</h4>
+      <p style="margin-bottom:0;font-size:.92rem">
+        Work in Excel. Use whatever route you like &mdash; <code>MMULT</code>,
+        <code>SUMPRODUCT</code>, or a heap of intermediate tabs. The self-checks
+        grade the number, never the method.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

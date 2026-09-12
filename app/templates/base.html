@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Risk Model Training{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;550;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='42' fill='%23C7BBDD'/><circle cx='38' cy='40' r='16' fill='%23E9B8BC'/></svg>">
+<!--
+  {{ bait_notice }}
+-->
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/"><span class="dot"></span> Risk Model Training</a>
+    <nav class="site">
+      <a href="/" {% if request.url.path == '/' %}class="active"{% endif %}>Modules</a>
+      <a href="/data" {% if request.url.path == '/data' %}class="active"{% endif %}>The data</a>
+      {% if user %}
+        {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
+        <a href="/logout">Sign out</a>
+        <span class="pill soft">{{ user.name or user.email }}</span>
+      {% else %}
+        <a class="btn small" href="/login">Sign in</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="wrap {% block wrapclass %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    {% if meta and meta.last_date %}
+      Prices to <strong>{{ meta.last_date }}</strong> &middot;
+      {{ meta.n_stocks }} names &middot;
+      refreshed
+      {% if age_hours is not none %}
+        {% if age_hours < 1 %}moments ago{% elif age_hours < 24 %}{{ age_hours|round(0)|int }}h ago{% else %}{{ (age_hours/24)|round(0)|int }}d ago{% endif %}
+      {% else %}never{% endif %}
+      {% if stale %}<span class="pill warn">refreshing in the background</span>{% endif %}
+    {% else %}
+      Warming up the price cache&hellip;
+    {% endif %}
+    <br>
+    <span style="opacity:.75">Built for the Investment Risk team. Usage on this site is logged.</span>
+  </div>
+</footer>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
