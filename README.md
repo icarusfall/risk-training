@@ -116,6 +116,64 @@ someone is getting on, never as proof.
 The welcome page states that usage is logged. Worth keeping: it makes the signal
 more meaningful, and at a regulated firm employee monitoring deserves the notice.
 
+## Planned
+
+**Module 11 — higher moments.** Skew, kurtosis, and a lesson in how badly the
+fourth moment behaves. Measured on the `CAPFIXED_TR` benchmark, weekly returns,
+2005 onwards — the only thing that changes between rows is which weekday the
+week is sampled on:
+
+| Anchor | Skew | Excess kurtosis | Ann. vol |
+|---|---|---|---|
+| Mon | −0.25 | 5.68 | 17.86% |
+| Tue | +0.02 | 7.51 | 16.91% |
+| Wed | −0.47 | 5.65 | 17.11% |
+| Thu | −0.88 | 9.08 | 17.31% |
+| Fri | −0.85 | 10.49 | 17.77% |
+
+Kurtosis nearly doubles and skew changes sign, while volatility moves 5.4%. The
+second moment is a stable statistic; the fourth is not.
+
+**The mechanism, which is the actual lesson:** it is whether the bucketing
+*captures* an outlier or *smooths over* it. A crash runs across several days. If
+the week boundary falls outside it, the whole collapse lands in one bucket and
+shows up as a single enormous return. If the boundary falls inside it, the crash
+is split across two buckets and averaged away.
+
+October 2008, daily: −7.6%, −0.2%, −5.7%, −1.2%, −9.1%, then a rebound.
+
+| Anchor | Same fortnight, weekly |
+|---|---|
+| Friday | **−21.8%**, then +2.5% — collapse captured whole |
+| Wednesday | −12.4%, then −6.8% — split down the middle |
+| Monday | −3.5%, then −9.0% — split, and partly offset by the rebound |
+
+Across the five anchors, the correlation between excess kurtosis and the number
+of weeks holding two or more of the twenty worst days is **+0.90**. Fat tails
+appear when the sampling grid happens to bundle bad days together.
+
+The corollary: dropping the three most extreme weeks out of 1,115 shrinks the
+kurtosis spread from 4.84 to 1.29. Three quarters of the disagreement rests on
+three observations, which is what "the fourth moment barely converges" means in
+practice.
+
+Note this is a *different* criterion from Module 2. Wednesday sampling is right
+for volatility because it avoids stale prints; it is not right for kurtosis for
+that reason. There is no monotone relationship between stale weeks and kurtosis
+(Monday has the most stale weeks at 106 and near-lowest kurtosis), so do not
+claim one.
+
+Then the payoff: **Cornish–Fisher VaR**, which adjusts the normal quantile for
+skew and kurtosis:
+
+```
+z_cf = z + (z²−1)·S/6 + (z³−3z)·K/24 − (2z³−5z)·S²/36
+```
+
+It sits neatly between parametric and historical VaR in Module 6 — and having
+just watched kurtosis swing by a factor of two, a joiner is well placed to ask
+how much they trust a VaR number that depends on it.
+
 ## Layout
 
 ```
