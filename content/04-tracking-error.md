@@ -14,16 +14,17 @@ its benchmark?
 
 <div class="formula">w<sub>active</sub> = w<sub>portfolio</sub> &minus; w<sub>benchmark</sub></div>
 
-That is the whole trick. Tracking error is portfolio volatility computed on
-active weights instead of absolute ones:
+One quick adjustment to the covariance calculation swaps the answer for a
+relative number: just use the relative weights in the calculation, and leave the
+covariance matrix alone.
 
 <div class="formula">TE = &radic;(w<sub>a</sub>&prime; &Sigma; w<sub>a</sub>) &times; &radic;52</div>
 
-Same matrix. Same formula. Different vector.
-
-That gets you the right **total**. It does not get you the right
-**decomposition**, and the gap between those two statements is the most
-important thing in this module. Hold that thought until the end.
+This will give the right total tracking error. But often the most interesting
+question is not what the total number is, but which holdings &mdash; or, later
+on, which factors &mdash; are driving it: what is the tracking error
+**breakdown**? Interestingly, just swapping in relative weights causes problems
+for the breakdown of risk. More on that at the end of the module.
 
 Two properties worth internalising:
 
