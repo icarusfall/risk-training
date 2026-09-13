@@ -256,7 +256,56 @@ The total is **identical** &mdash; check that first, it is a good test of your
 algebra. But the attribution now lands on the positions that caused it. In the
 cash example, cash takes 100% and the stocks take 0%.
 
-!!! excel "Doing the rotation"
+### Two ways to build it
+
+There are two routes to the rotated matrix, and they give identical numbers.
+
+**Route one: a relative returns tab.** Work out the benchmark return for each
+week, subtract it from every stock return, and compute a covariance matrix of
+those relative returns exactly as you did in Module 3. Cash gets a column too:
+its relative return is simply the benchmark return with the sign flipped.
+
+This is the more transparent route. Every number in the resulting matrix is
+something you can point at &mdash; the covariance between how much this stock
+beat the index and how much that one did. It is more work, but it is hard to get
+wrong.
+
+**Route two: adjust the matrix you already have.** Take the absolute covariance
+matrix, subtract each stock's covariance with the benchmark along both the rows
+and the columns, then add back the benchmark variance. That is the formula
+above.
+
+It is less typing, and frankly probably the easier route. But the adjustments
+are more abstract, and that makes it easier to make a mistake without noticing.
+It helps to recognise them for what they are: **beta adjustments**. The
+covariance of a stock with the benchmark is just its beta times the benchmark
+variance, so
+
+<div class="formula">
+&Sigma;&#771;<sub>ij</sub> = &Sigma;<sub>ij</sub> &minus; &beta;<sub>i</sub>&sigma;<sub>b</sub><sup>2</sup> &minus; &beta;<sub>j</sub>&sigma;<sub>b</sub><sup>2</sup> + &sigma;<sub>b</sub><sup>2</sup>
+</div>
+
+If you build both, subtract one matrix from the other. Every cell should be zero,
+and if it is, you can trust either.
+
+!!! excel "Route one: a relative returns tab"
+    Put your benchmark weights in a row on a `Weights` sheet, in the same ticker
+    order as your returns. The benchmark return for each week is then:
+    ```
+    =SUMPRODUCT(ReturnsW!B2:M2, Weights!$B$2:$M$2)
+    ```
+    On a new `RelW` tab, with that benchmark return in column N, each stock:
+    ```
+    =ReturnsW!B2 - $N2
+    ```
+    and a cash column alongside:
+    ```
+    =-$N2
+    ```
+    Then run the Module 3 covariance recipe on `RelW`, cash column included.
+    Nothing new to learn; only the input has changed.
+
+!!! excel "Route two: adjusting the matrix you already have"
     Add cash to your universe first: one extra row and column of **zeros** in the
     covariance matrix, a benchmark weight of 0, and a portfolio weight of 5%.
     Cash really does have zero absolute risk &mdash; that is the whole point.
