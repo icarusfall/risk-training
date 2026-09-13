@@ -114,5 +114,44 @@ model is calibrated, LR follows &chi;&sup2; with one degree of freedom. Reject a
     that mattered most. The Christoffersen test adds a clustering check, and in
     practice clustering is often the more serious problem.
 
+### In practice: the UCITS rule of thumb
+
+Regular backtesting of VaR breaks is a regulatory requirement for UCITS funds in
+Europe that measure global exposure using VaR. The
+[CESR guidelines](https://www.fsc.gi/uploads/legacy/download/ucits/CESR-10-788.pdf)
+(CESR/10-788) keep it simple. Count the days in the most recent **250 business
+days**, roughly a year, on which the one-day loss exceeded the one-day 99% VaR.
+A well-calibrated model should produce about 2.5. If there are **more than
+four**, senior management, and the regulator where applicable, must be told at
+least quarterly, with an analysis of what caused the breaks and what was done
+about it.
+
+So in practice the Kupiec test is replaced by a much simpler rule of thumb. The
+two are worth comparing, using the Kupiec formula above with 250 days:
+
+| Breaks in 250 days | Kupiec p-value | Rejected at 95%? | Chance of at least this many if the model is right |
+|---|---|---|---|
+| 4 | 0.38 | No | 24% |
+| 5 | 0.16 | No | 11% |
+| 6 | 0.06 | No | 4% |
+| 7 | 0.02 | Yes | 1% |
+
+The rule of thumb is stricter than Kupiec. Five breaks is nowhere near a
+statistical rejection, but it still triggers an investigation, so roughly one
+correctly calibrated fund in nine will trip it in a given year through bad luck
+alone. That is a sensible trade for a regulator, who would rather look into a few
+false alarms than miss a broken model, and worth remembering when you are the one
+writing the explanation.
+
+The threshold of four matches the edge of the green zone in the Basel
+traffic-light test for bank trading books, where five to nine breaks in 250 days
+is amber and ten or more is red.
+
+!!! tip "Daily versus weekly"
+    The regulatory count uses one-day VaR and daily profit and loss. The backtest
+    in this module uses weekly returns over the whole sample, so the two sets of
+    numbers are not directly comparable. To apply the rule yourself, rerun the
+    backtest on daily returns for the most recent 250 business days.
+
 Run the backtest on both your parametric and your historical VaR. One of them will
 do noticeably better. Form a view on why.
