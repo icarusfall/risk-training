@@ -183,7 +183,8 @@ afterwards.
 For a fixed portfolio of shares you could fit a t to the portfolio's own returns,
 as in Part 1, and stop. Monte Carlo is how you build the answer from the parts
 instead. That is what you need when the portfolio is about to change, when it
-holds options whose value is not a straight line in the share price, or when you
+holds options whose value is not a straight line in the share price (Module 6
+shows what that does to a normal VaR), or when you
 want to choose the tails and the dependence separately, as Part 2 suggests you
 should.
 

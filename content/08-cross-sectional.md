@@ -358,3 +358,103 @@ it is a large part of what vendors charge for.
     approximate (see the note in Module 1 about NatWest). A production model uses
     the share count as it was reported at the time, along with the accounts as
     they were known *then*, not as they were later restated. Getting this wrong builds a backtest that quietly knows the future.
+
+## What "stock-specific" really means
+
+A factor model splits risk in two: the part its factors explain, and the rest,
+which it calls **specific** or **idiosyncratic** risk. Risk reports lean hard on
+that split. "Most of this manager's tracking error is stock-specific" sounds like
+a compliment: the manager is picking stocks rather than making large bets on
+sectors or styles.
+
+Handle it with care. Specific risk is defined as whatever the model's factors
+failed to explain, so it describes the model as much as the manager. A missing
+factor, an industry that is too coarse, or a style measured on the wrong universe
+all get reported as stock selection.
+
+### Same portfolios, different models
+
+Take the 300 portfolios built the same way as yours. Measure each one's active
+risk against a cap-weighted benchmark of all 81 names, over the same 154 weeks,
+and ask different models what share of that active variance is specific:
+
+| Model | Specific share of active variance, median | Middle 80% of portfolios |
+|---|---|---|
+| Single-factor (Module 7) | 99% | 93% to 100% |
+| Cross-sectional, as built in this module | 42% | 35% to 50% |
+| Cross-sectional, with banks split out | 41% | 34% to 49% |
+| Cross-sectional, without the size factor | 52% | 43% to 63% |
+| Cross-sectional, without any style factors | 59% | 48% to 69% |
+| Statistical, five components (Module 9) | 65% | 52% to 79% |
+
+For a typical portfolio the answer moves across 57 percentage points depending on
+which model you ask. Nothing about the portfolios changed.
+
+The single-factor model is the extreme case, and a useful warning. A long-only
+portfolio measured against its own benchmark has almost no net exposure to the
+market, so a model whose only factor is the market will call nearly all of its
+active risk specific, whatever the manager actually did.
+
+### When the model does not fit the universe
+
+The same thing happens, less visibly, when a model is built for a different
+universe from the one the manager invests in.
+
+Take a UK manager with a style bias, measured on a global risk model. A global
+model standardises size, momentum and value across the whole world's stocks. By
+global standards every FTSE 100 company is a large cap, so a UK manager tilting
+towards the smaller end of the FTSE barely registers in the global size exposure.
+The tilt is still there, and so are the returns it produces, but the model has
+no factor that sees it, so it lands in specific risk. The same goes for factor
+returns estimated mostly on US stocks: a style that paid off in the UK but not
+elsewhere has nothing in the model to explain it.
+
+Removing the style factors from our own model is a crude stand-in for that
+situation, a model that cannot see UK style differences at all. The typical
+portfolio's specific share rises from 42% to 59%, and a manager who was a
+moderate stock-picker becomes a committed one on paper.
+
+### The banks, again
+
+The five-bank portfolio from earlier in this module, measured against the same
+cap-weighted benchmark:
+
+| Model | Specific share of active variance | Model tracking error |
+|---|---|---|
+| Cross-sectional, 11 industries | 28.5% | 13.7% |
+| Cross-sectional, banks split out | 12.2% | 19.3% |
+| What the portfolio actually did over the same weeks | | 18.0% |
+
+With one Financials factor covering banks, insurers and asset managers, more
+than a quarter of the banks' active risk is labelled stock-specific, and the model
+falls well short of the tracking error that actually happened. Give banks their
+own factor and the specific share more than halves, and the prediction comes
+close. (These are in-sample figures, so Module 10's warning applies. The gap is
+still telling.)
+
+There is a check you can run yourself. If the specific returns really are
+specific, they should be roughly uncorrelated with each other. Under the
+11-industry model the five banks' specific returns have an average pairwise
+correlation of **+0.10**. Pick five names at random from the universe and 99% of
+baskets come out below that. The banks' "specific" returns were moving together,
+which is the signature of a missing factor.
+
+With banks split out the average becomes &minus;0.17. A factor built from only
+five names absorbs their shared movement and then some, which is its own small
+warning about very narrow factors.
+
+The check is useful but not foolproof. The twelve smallest names in the universe
+have a specific share of 31% under the full model and 46% without the size
+factor, yet their specific returns are barely correlated either way (+0.04 and
++0.03). A missing factor with modest returns can shift the attribution a long way
+without leaving an obvious trace.
+
+!!! tip "Reading a specific-risk number"
+    - Treat the split as a statement about the model and the portfolio together.
+    - Ask whether the model was built for the manager's universe: a UK manager
+      deserves a model that can see UK style and industry differences.
+    - Compare a fundamental and a statistical model. If they disagree badly on
+      the split, the split is not robust.
+    - Check whether the "specific" returns of the holdings are correlated with
+      each other.
+    - Compare predicted with realised tracking error, as in Module 10.

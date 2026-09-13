@@ -162,9 +162,12 @@ order.
 Charlie's view, 13 September 2026: with Module 12 the syllabus is essentially
 complete. What follows is optional.
 
-1. **Review the Module 13 copy** (Monte Carlo, Student-t, rank correlation and
-   copulas), drafted 13 September 2026, give it a cartoon, then push. It is
-   committed but deliberately not yet live.
+1. **Review, then push**, all drafted 13 September 2026 and committed but
+   deliberately not yet live:
+   - Module 13 (Monte Carlo, Student-t, rank correlation and copulas), which
+     also needs a cartoon.
+   - Module 8's new closing section on what "stock-specific" really means.
+   - Module 6's new section on options and full revaluation.
 
 2. **Email joiners directly once a sending domain is verified in Resend.** Set
    `MAIL_FROM` to an address on the domain and `LOGIN_LINK_RECIPIENT=user` in
@@ -327,6 +330,39 @@ convention.
 
 Self-checks, on the joiner's own daily portfolio returns: α from the 50 largest
 losses, and years between 20% daily losses read off the fitted line.
+
+### Module 8 addition: what "stock-specific" really means
+
+Charlie's steer: a report saying a manager takes mostly specific risk may just
+mean the model is mis-specified for the universe (for example a UK manager with a
+style bias on a global model). Verified 13 September 2026 over the Module 8 window
+(154 weeks after 27 September 2023), active risk against the 81-name cap-weighted
+benchmark:
+
+- **300 joiner portfolios**, specific share of active variance, median (10th–90th
+  percentile): single-factor 98.7% (92.6–100); CS 11 industries 42.2% (35.4–49.9);
+  banks split 41.1%; no size 51.9% (43.1–62.6); no styles 58.8% (48.0–68.6); PCA-5
+  65.4% (51.6–78.8). Median spread across models 56.6 points.
+- **Five banks**: CS 11 industries specific 28.5%, model TE 13.66%; banks split
+  12.2%, TE 19.31%; realised TE 18.02% (in-sample).
+- **Residual correlation**: five banks +0.104 under 11 industries (random
+  5-name baskets: mean −0.007, 95th percentile 0.066, 99th 0.103); −0.174 with
+  banks split.
+- **12 smallest names**: specific share 30.7% with size, 45.8% without; residual
+  correlation +0.040 vs +0.027, so the correlation diagnostic misses this one.
+
+### Module 6 addition: options and full revaluation
+
+Charlie's steer: non-linear payoffs are a simple reason to prefer historical or
+Monte Carlo VaR. Benchmark at 100, 1-month options at the benchmark's 17.11%
+volatility, zero rates, 1-week horizon, implied vol held fixed. 99% VaR in
+points, delta-normal / delta-gamma normal / full-reval normal MC / full-reval
+historical:
+
+- Index 5.52 / 5.52 / 5.52 / 6.82.
+- Short ATM put 2.71 / 3.99 / 3.78 / 5.00 (premium 1.893, worst week −12.00).
+- Short 5% OTM put 0.74 / 1.44 / 1.50 / 2.29 (premium 0.330, worst −8.57).
+- Index + long ATM put 2.81 / 1.52 / 1.74 / 1.82 (worst −1.89).
 
 ### Module 13: Student-t, copulas and Monte Carlo
 

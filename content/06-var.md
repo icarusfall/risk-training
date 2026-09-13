@@ -83,6 +83,68 @@ It is typically 1.3&ndash;1.6&times; the VaR. Regulators have largely moved to E
 partly because VaR says nothing about the size of losses beyond the threshold,
 and partly because VaR is not sub-additive: the VaR of a combined book can exceed the sum of its parts, which is absurd for a risk measure. ES does not have that problem.
 
+## Options: the simplest reason to revalue
+
+Everything so far has been a portfolio of shares, whose value moves in a straight
+line with the prices. Plenty of portfolios hold something that does not. Options
+are the obvious example; convertible bonds and structured products are others.
+
+Parametric VaR can only handle an option by approximating it with its **delta**:
+the number of units of the underlying it behaves like for a small move. That is
+accurate for small moves and increasingly wrong for large ones, and large moves
+are what VaR is about.
+
+Historical VaR has no such problem. Reprice the option under each historical move
+and take the percentile of the profits and losses that result. This is called
+**full revaluation**. Monte Carlo does the same thing with simulated moves.
+
+Here is how much it matters. Take the benchmark at 100, one-month options priced
+at the benchmark's own volatility of 17.1%, zero interest rates, and a one-week
+horizon. The 99% one-week VaR, in index points:
+
+| Position | Delta-normal | Normal moves, full revaluation | Historical moves, full revaluation | Worst week in the sample |
+|---|---|---|---|---|
+| The index alone | 5.52 | 5.52 | 6.82 | &minus;13.89 |
+| Short an at-the-money put | 2.71 | 3.78 | 5.00 | &minus;12.00 |
+| Short a put 5% out of the money | 0.74 | 1.50 | 2.29 | &minus;8.57 |
+| The index plus a long at-the-money put | 2.81 | 1.74 | 1.82 | &minus;1.89 |
+
+The middle column still assumes normal returns but reprices the option properly,
+so the step from the first column to the second is purely the option's curvature.
+The step from the second to the third is the fat tail, as in the index-alone row.
+
+- **Short puts are understated.** For the out-of-the-money put, delta-normal VaR
+  is 0.74. Curvature alone doubles it, and fat tails take it to 2.29. The seller
+  collected a premium of 0.33, and the worst week in the sample cost 8.57.
+- **Protective puts are overstated.** The put puts a floor under the loss, and the
+  worst week cost 1.89, barely more than the put's price. Delta-normal cannot see
+  the floor and reports 2.81, half as much again as the full-revaluation answer.
+
+The mechanism is **gamma**, the rate at which delta changes. A short option loses
+faster and faster as the market moves against it; a long option loses more and
+more slowly. A **delta-gamma** approximation adds that second-order term, and
+gets much closer (3.99 and 1.44 for the two short puts), but full revaluation is
+the straightforward answer whenever you can reprice the position.
+
+!!! excel "Repricing a put under every historical week"
+    Black&ndash;Scholes with zero rates, for spot `S`, strike `K`, years to expiry
+    `T` and volatility `v`:
+    ```
+    d1    =(LN(S/K) + 0.5*v^2*T) / (v*SQRT(T))
+    d2    =d1 - v*SQRT(T)
+    put   =K*NORM.S.DIST(-d2, TRUE) - S*NORM.S.DIST(-d1, TRUE)
+    delta =NORM.S.DIST(d1, TRUE) - 1
+    ```
+    Price the put today with `S` = 100 and `T` = 4/52. Then, for each historical
+    weekly return r, reprice it with `S` = 100 &times; (1 + r) and `T` = 3/52.
+    For a short put the week's P&L is today's price minus the new one. The VaR is
+    `-PERCENTILE.INC` of that column at 0.01, exactly as before.
+
+!!! warning "The table flatters the short puts"
+    It holds implied volatility fixed at 17.1%. In a real sell-off implied
+    volatility jumps, which makes a short put lose more still. A proper full
+    revaluation moves the volatility as well as the price.
+
 ## Backtesting
 
 A VaR number is a **prediction**, so it can be tested against what happened.
