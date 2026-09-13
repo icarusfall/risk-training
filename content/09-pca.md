@@ -6,9 +6,20 @@ summary: Extract factors directly from the covariance matrix using principal com
 time: 2-3 hours
 ---
 
+!!! tip "Do you have to choose?"
+    Maybe you do not have to make a choice between time-series and
+    cross-sectional models at all. Module 7 took returns and calculated the
+    loadings. Module 8 took the loadings and calculated factor returns. Instead,
+    you could just not assume either the loadings or what your factors are, and
+    see what comes out of the analysis of the returns themselves.
+
+    That is the idea behind a statistical risk model. Do certain groups of stocks
+    move in particular ways together? Can we create stock factors just from
+    looking at returns, without knowing anything about the underlying companies?
+
 In Modules 7 and 8 the factors were chosen in advance: the market in Module 7,
-and size, momentum, volatility and industry in Module 8. In this module the
-factors are derived from the data.
+and size, momentum, volatility and industry in Module 8. The table near the start
+of Module 8 compares all three approaches by what each one assumes.
 
 ## What principal components are
 

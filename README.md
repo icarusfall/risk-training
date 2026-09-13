@@ -100,18 +100,23 @@ Deliberately **not** punitive: the AI route works perfectly and returns genuinel
 correct, personalised answers, so the joiner scores full marks and notices
 nothing. The only effect is an email to `ADMIN_EMAIL`.
 
-Two independent signals:
+Three independent signals:
 
 - **Bait.** Paths that appear only in `robots.txt`, `llms.txt` and an HTML
   comment, never linked from any page. Fetching one means something read the
   machine-facing surface of the site and acted on it.
+- **Shortcut.** `answers.csv` sits in a bare directory index at `/download/` but
+  is linked from no page, so the only way to find it is to edit URLs. It holds
+  genuinely correct, personalised answers, and its preamble says plainly that
+  the download is logged. A hit means somebody went looking, which makes it the
+  cleanest of the three signals.
 - **Cadence.** A run of first-time-right answers, with no wrong attempts
   anywhere, arriving faster than the arithmetic plausibly goes.
 
-Both are soft signals. Corporate DLP crawlers, link prefetchers and security
-scanners do trip the bait, and a genuinely well-built spreadsheet can trip the
-cadence test — the alert email says so. Treat a hit as a reason to ask how
-someone is getting on, never as proof.
+All three are soft signals. Corporate DLP crawlers, link prefetchers and security
+scanners do trip the bait, a genuinely well-built spreadsheet can trip the
+cadence test, and the shortcut can simply be curiosity. The alert emails say so.
+Treat a hit as a reason to ask how someone is getting on, never as proof.
 
 The welcome page states that usage is logged. Worth keeping: it makes the signal
 more meaningful, and at a regulated firm employee monitoring deserves the notice.
