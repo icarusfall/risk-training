@@ -209,7 +209,7 @@ each model assumes.
 
 ---
 
-## That is the programme
+## That is the core programme
 
 You have built an equity risk model from a column of prices, five different ways,
 and you know why they disagree. You have found bad data by looking at it. You know
@@ -217,3 +217,6 @@ what tracking error is, where risk comes from in a portfolio, what VaR does and
 does not tell you, and why the model that fits the past best can forecast worst.
 
 Come and find me &mdash; I would like to hear which part surprised you most.
+
+After that, [Module 11](/module/higher-moments) leaves the normal distribution
+behind and looks at the shape of the tails.

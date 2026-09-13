@@ -22,6 +22,7 @@ joiner's spreadsheet.
 | 8 | Cross-sectional factor model: `Σ = XFX' + Δ` |
 | 9 | Statistical / PCA model, eigenvectors by power iteration |
 | 10 | Bake-off: five models, one portfolio, bias statistics |
+| 11 | Higher moments: skew, kurtosis, Cornish–Fisher VaR |
 
 Lessons live in [`content/`](content/) as markdown — edit them without touching
 any Python.
@@ -42,7 +43,7 @@ key behind. Nothing is hardcoded.
 relative tolerance. `MMULT`, `SUMPRODUCT`, pairwise `COVARIANCE.S` — all pass.
 
 **Each joiner gets their own portfolio**, seeded from their user id, so answers
-cannot be shared. There are 23 self-checks across Modules 1 to 10.
+cannot be shared. There are 26 self-checks across Modules 1 to 11.
 
 **Three datasets.** `raw` is all 100 names exactly as they arrive, ragged and
 uncleaned, for Module 1. `core` (2005 onwards, 81 names, cleaned and trimmed to
@@ -108,7 +109,7 @@ Open that link. With no `RESEND_API_KEY` set, magic links are written to the
 server log instead of emailed.
 
 **Run `python scripts/smoke_test.py` before every push.** It hits every route
-in-process with deprecation warnings escalated to errors, grades all 23 checks,
+in-process with deprecation warnings escalated to errors, grades every check,
 and checks the canary, downloads, images and sign-in flow.
 
 ## Deploying to Railway
@@ -156,9 +157,9 @@ The copy review of all eleven modules finished on 13 September 2026, and every
 module had its cartoons by the end of the same day. Work through these roughly in
 order.
 
-1. **Module 11: higher moments.** Spec below. It wants a fat-tails-against-the-normal
-   cartoon, drawn as a pair with the Module 6 VaR image (see *Illustrations*
-   above).
+1. **Review the Module 11 copy**, drafted 13 September 2026, and give it its
+   fat-tails-against-the-normal cartoon, drawn as a pair with the Module 6 VaR
+   image (see *Illustrations* above).
 
 2. **Module 12: fat-tailed distributions and Monte Carlo.** Spec below.
 
@@ -188,10 +189,11 @@ figure computed on the live data before it goes in.
 
 ### Module 11: higher moments
 
-Skew, kurtosis, and how badly the fourth moment behaves. Measured on the
-`CAPFIXED_TR` benchmark, weekly returns on complete weeks from 2005 onwards,
-changing only which weekday each week is sampled on (recomputed 13 September
-2026; re-verify on the live data when writing the lesson):
+Written as `content/11-higher-moments.md`; this spec is kept as the record of
+what was verified. Skew, kurtosis, and how badly the fourth moment behaves.
+Measured on the `CAPFIXED_TR` benchmark, weekly returns on complete weeks from
+2005 onwards, changing only which weekday each week is sampled on (verified on
+the live data 13 September 2026):
 
 | Anchor | Skew | Excess kurtosis | Ann. vol |
 |---|---|---|---|
@@ -217,12 +219,16 @@ October 2008, daily: −7.6%, −0.2%, −5.7%, −1.2%, −9.1%, then a rebound
 | Wednesday | −12.4%, then −6.8%: split down the middle |
 | Monday | −3.5%, then −9.0%: split, and partly offset by the rebound |
 
-Across the five anchors, the correlation between excess kurtosis and the number
-of weeks holding two or more of the twenty worst days is **+0.90**.
-
 Dropping the three most extreme weeks out of about 1,114 shrinks the kurtosis
 spread from 4.85 to 1.29, so most of the disagreement rests on three
-observations.
+observations. The top three weeks supply 32% of the sum of fourth powers on
+Wednesdays and 60% on Fridays.
+
+An earlier draft quoted a +0.90 correlation between kurtosis and the number of
+weeks holding two or more of the twenty worst days. With the twenty worst days
+by signed return it is +0.70; +0.90 only appears for the twenty largest
+absolute moves, and those counts are 2, 2, 2, 3 and 3 across the five anchors,
+too thin to quote. The lesson leaves it out.
 
 Wednesday sampling is right for volatility because it avoids stale prints. That
 is a different criterion, and there is no monotone relationship between stale
@@ -236,9 +242,22 @@ kurtosis:
 z_cf = z + (z²−1)·S/6 + (z³−3z)·K/24 − (2z³−5z)·S²/36
 ```
 
-It sits between parametric and historical VaR from Module 6, and after watching
-kurtosis swing by a factor of two, a joiner is well placed to ask how much they
-trust a VaR number that depends on it.
+An earlier draft assumed it would sit between parametric and historical VaR. It
+does not. On the benchmark at 99% one week (Wednesday): parametric 5.52%,
+historical 6.82%, Cornish–Fisher 9.28%, historical expected shortfall 9.53%.
+Across 300 joiner portfolios Cornish–Fisher is above historical VaR every time
+(median 1.37×, minimum 1.05×) and close to expected shortfall (median 0.99×,
+middle half 0.93–1.06×). The kurtosis term does most of the work: −0.234 sd per
+point of excess kurtosis at 99%, so −1.32 of the −3.91 quantile on Wednesdays.
+
+It also inherits kurtosis's instability. Wednesday to Friday sampling moves
+Cornish–Fisher VaR from 9.28% to 12.64% (+36%), against −4% for historical and
++4% for parametric; across the 300 portfolios the median move is +16% against
++3% for historical. At Friday's excess kurtosis of 10.5 the expansion is not
+even monotone, running backwards for z between −0.31 and +0.55.
+
+Self-checks, on the joiner's own Wednesday weekly portfolio returns: `SKEW`,
+`KURT` (excess) and 99% Cornish–Fisher VaR.
 
 ### Module 12: fat-tailed distributions and Monte Carlo
 
@@ -272,7 +291,7 @@ Python, which makes this a sensible place to end the programme.
 app/
   main.py            FastAPI routes: pages, checks, downloads, sign-in, admin
   config.py          all settings, overridable by environment variable
-  checks.py          self-check engine (23 checks), per-joiner portfolios
+  checks.py          self-check engine (26 checks), per-joiner portfolios
   canary.py          bait paths, the answers.csv shortcut, cadence detection
   content.py         markdown lesson loader
   db.py              SQLite: users, login tokens, attempts, events

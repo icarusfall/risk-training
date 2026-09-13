@@ -94,6 +94,7 @@ class Check:
     compute: Callable
     hint: str = ""
     rtol: float | None = None
+    atol: float = 0.0               # for answers that can sit near zero, like skew
 
 
 def stock_label(ds: datasets.Dataset, ticker: str) -> str:
@@ -294,6 +295,19 @@ def _bias_ewma(c):
     return float(A.bias_statistic_ewma(_port_return_series(c), lam=0.94)["bias"])
 
 
+# --- module 11: higher moments ----------------------------------------------
+def _skew(c):
+    return float(_port_return_series(c).skew())        # = Excel SKEW
+
+
+def _excess_kurt(c):
+    return float(_port_return_series(c).kurt())        # = Excel KURT, already excess
+
+
+def _var_cf(c):
+    return float(100 * A.var_cornish_fisher(_port_return_series(c), conf=0.99))
+
+
 # --- module 4: the cash trap ------------------------------------------------
 # A portfolio holding 95% of the BENCHMARK weights plus 5% cash. The only
 # active decision is the cash, so it must carry all of the tracking error - and
@@ -428,6 +442,20 @@ CHECKS: dict[str, Check] = {ck.id: ck for ck in [
           "lambda = 0.94", "number", _bias_ewma,
           "Update the variance AFTER making each forecast, never before, or you are "
           "peeking at the return you are trying to predict."),
+
+    Check("m11_skew", "11", "Skew of your portfolio's weekly (Wednesday-to-Wednesday) "
+          "returns", "number", _skew,
+          "SKEW() on the same weekly portfolio returns you used for VaR in Module 6. "
+          "Give three decimal places; it is usually negative.",
+          atol=0.005),
+    Check("m11_kurt", "11", "EXCESS kurtosis of your portfolio's weekly returns",
+          "number", _excess_kurt,
+          "KURT() already subtracts the 3. If you are out by roughly 3, you have "
+          "raw kurtosis."),
+    Check("m11_var_cf", "11", "One-week 99% Cornish-Fisher VaR of your portfolio, as "
+          "a positive loss (%)", "percent", _var_cf,
+          "Adjust z = NORM.S.INV(0.01) using SKEW and KURT, then multiply by the "
+          "weekly STDEV.S. It should come out ABOVE your historical VaR."),
 ]}
 
 
@@ -458,7 +486,8 @@ def grade(check_id: str, submitted, seed: int, dataset: str = "core") -> dict:
     rtol = ck.rtol or config.CHECK_RTOL
     denom = abs(exp) if abs(exp) > 1e-12 else 1.0
     rel = abs(got - exp) / denom
-    return {"correct": bool(rel <= rtol), "expected": exp, "rel_error": rel,
+    correct = rel <= rtol or abs(got - exp) <= ck.atol
+    return {"correct": bool(correct), "expected": exp, "rel_error": rel,
             "submitted": got}
 
 

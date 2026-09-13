@@ -61,6 +61,26 @@ def expected_shortfall(port_returns: pd.Series, conf: float = 0.99) -> float:
     return float(-tail.mean()) if tail.size else float("nan")
 
 
+def cornish_fisher_z(z: float, skew: float, excess_kurt: float) -> float:
+    """The normal quantile adjusted for skew and EXCESS kurtosis (module 11)."""
+    s, k = skew, excess_kurt
+    return (z + (z ** 2 - 1) * s / 6 + (z ** 3 - 3 * z) * k / 24
+            - (2 * z ** 3 - 5 * z) * s ** 2 / 36)
+
+
+def var_cornish_fisher(port_returns: pd.Series, conf: float = 0.99) -> float:
+    """Cornish-Fisher VaR as a POSITIVE loss fraction, mean set to zero.
+
+    Uses Excel's conventions - SKEW, KURT (already excess) and STDEV.S - which
+    are exactly pandas' skew(), kurt() and std(). On this data it lands above
+    historical VaR, not between parametric and historical: the expansion is
+    meant for mild departures from normality and weekly excess kurtosis is 5+.
+    """
+    r = pd.Series(port_returns).dropna()
+    z = cornish_fisher_z(norm_ppf(1 - conf), float(r.skew()), float(r.kurt()))
+    return float(-z * r.std(ddof=1))
+
+
 def kupiec_pof(exceptions: int, n: int, conf: float = 0.99) -> dict:
     """Kupiec proportion-of-failures test.
 

@@ -37,7 +37,8 @@ PAGES += [f"/static/img/{name}.png" for name in [
     "var-breaks-cluster", "factor-model-dog-walk", "cross-sectional-car-shadow",
     "cross-sectional-personal-goods", "pca-machine", "bake-off-sharpshooter"]]
 MODULES = ["orientation", "data", "returns", "covariance", "tracking-error",
-           "ewma", "var", "factor-model", "cross-sectional", "pca", "bake-off"]
+           "ewma", "var", "factor-model", "cross-sectional", "pca", "bake-off",
+           "higher-moments"]
 DOWNLOADS = ["prices", "benchmarks", "universe", "quality", "workbook"]
 
 
@@ -113,7 +114,10 @@ def main() -> int:
         graded = r.status_code == 200 and r.json().get("correct") is True
         # A wrong answer must be rejected, or the tolerance is meaningless.
         if isinstance(exp, float) and abs(exp) > 1e-9:
-            rj = client.post(f"/check/{cid}", data={"answer": str(exp * 1.5)})
+            # 50% out, but never less than 0.05 out, so a near-zero skew does not
+            # fall inside its own absolute tolerance
+            wrong = exp * 1.5 if abs(exp) >= 0.1 else exp + 0.05
+            rj = client.post(f"/check/{cid}", data={"answer": str(wrong)})
             rejects = rj.status_code == 200 and rj.json().get("correct") is False
         else:
             rejects = True
