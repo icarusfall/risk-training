@@ -12,10 +12,15 @@
   </h3>
   {% if not new_link.emailed %}
   <p style="margin-bottom:.6rem;font-size:.92rem">
-    Resend refused delivery to <code>{{ new_link.email }}</code>. With the sandbox
-    sender (<code>onboarding@resend.dev</code>) it will only deliver to your own
-    Resend account address. Copy the link below and send it on, or verify a
-    domain to email joiners directly.
+    {% if new_link.mode == 'user' %}
+    Delivery to <code>{{ new_link.email }}</code> failed, so copy the link below
+    and send it on yourself.
+    {% else %}
+    Links are not emailed to joiners at the moment
+    (<code>LOGIN_LINK_RECIPIENT=admin</code>), so copy the link below and send it
+    on. Joiners can also request a fresh link from the sign-in page, which emails
+    it to you to forward.
+    {% endif %}
   </p>
   {% endif %}
   <div class="check-row">
@@ -40,7 +45,7 @@
       <input type="text" id="name" name="name" placeholder="Alex Doe">
       <label for="email" style="margin-top:.7rem">Email</label>
       <input type="email" id="email" name="email" required placeholder="alex.doe@lgim.com">
-      <p style="margin:.9rem 0 0"><button class="btn" type="submit">Create and email a link</button></p>
+      <p style="margin:.9rem 0 0"><button class="btn" type="submit">{% if link_mode == 'user' %}Create and email a link{% else %}Create and show the link{% endif %}</button></p>
     </form>
     <p class="meta-line" style="margin-bottom:0">
       With no mail key configured, the link is written to the server log instead.

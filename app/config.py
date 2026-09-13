@@ -54,6 +54,16 @@ BASE_URL = _env("BASE_URL", "http://localhost:8000")
 ADMIN_EMAIL = _env("ADMIN_EMAIL", "")
 ADMIN_TOKEN = _env("ADMIN_TOKEN", "letmein")
 
+# Who receives the login links requested from the sign-in page.
+#   "admin"  the link is emailed to ADMIN_EMAIL, who forwards it on. Needed
+#            while using Resend's sandbox sender, which only delivers to the
+#            account owner's own address.
+#   "user"   the link goes straight to the joiner. Switch to this once a
+#            sending domain has been verified.
+LOGIN_LINK_RECIPIENT = _env("LOGIN_LINK_RECIPIENT", "admin").strip().lower()
+# How the site refers to the person who runs the programme and forwards links.
+ADMIN_NAME = _env("ADMIN_NAME", "Charlie")
+
 # Outbound email for magic links + canary alerts (Resend). Unset => log to stdout.
 RESEND_API_KEY = _env("RESEND_API_KEY", "")
 # Resend's sandbox sender works with no domain setup, but ONLY delivers to the

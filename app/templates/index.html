@@ -102,8 +102,9 @@
     <h3 style="margin-top:0">Sign in to get your own portfolio</h3>
     <p style="margin-bottom:.9rem">
       Each joiner is assigned a different set of holdings, so the self-checks
-      grade your working rather than someone else's. No password &mdash; we email
-      you a link.
+      grade your working rather than someone else's. No password &mdash; {% if link_mode == 'user' %}we email you a
+      link.{% else %}request a link and {{ admin_name }} will forward it to
+      you.{% endif %}
     </p>
     <a class="btn" href="/login">Sign in</a>
   </div>

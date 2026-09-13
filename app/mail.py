@@ -56,3 +56,33 @@ def send_magic_link(to: str, name: str, url: str) -> bool:
         f"Bring Excel and some patience.\n"
     )
     return send(to, "Your risk model training link", body)
+
+
+def send_login_link_to_admin(email: str, name: str, url: str) -> bool:
+    """A joiner asked for a link from the sign-in page. Send it to the admin in
+    a form that can be forwarded as it stands."""
+    who = f"{name} ({email})" if name else email
+    greeting = f"Hello {name}," if name else "Hello,"
+    body = (
+        f"{who} asked for a login link to the risk model training site.\n\n"
+        f"Forward everything between the lines to {email}:\n\n"
+        f"----------------------------------------\n"
+        f"{greeting}\n\n"
+        f"Here is your link into the risk model training site:\n\n"
+        f"    {url}\n\n"
+        f"It is good for 72 hours. You will not need a password.\n"
+        f"----------------------------------------\n"
+    )
+    return send_admin(f"[risk-training] Login link for {who}", body)
+
+
+def send_access_request_to_admin(email: str) -> bool:
+    """Someone asked for a link for an address that is not registered."""
+    body = (
+        f"Someone asked for a login link for {email}, which is not registered on "
+        f"the risk model training site.\n\n"
+        f"If they should have access, add them from the admin page:\n\n"
+        f"    {config.BASE_URL}/admin\n\n"
+        f"If you do not recognise the address, you can ignore this.\n"
+    )
+    return send_admin(f"[risk-training] Access request from {email}", body)

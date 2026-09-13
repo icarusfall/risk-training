@@ -12,8 +12,10 @@ Route map:
 """
 from __future__ import annotations
 
+import json
 import logging
 import time
+from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -116,7 +118,8 @@ def _ctx(request: Request, **kw) -> dict:
     return {"request": request, "user": user, "meta": meta,
             "age_hours": store.age_hours(), "stale": store.is_stale(),
             "modules": content.list_modules(), "bait_notice": canary.BAIT_NOTICE,
-            "datasets": datasets.DATASETS, **kw}
+            "datasets": datasets.DATASETS, "admin_name": config.ADMIN_NAME,
+            "link_mode": config.LOGIN_LINK_RECIPIENT, **kw}
 
 
 # --------------------------------------------------------------------------- #
@@ -290,16 +293,48 @@ def login_form(request: Request, sent: str = ""):
     return templates.TemplateResponse(request, "login.html", _ctx(request, sent=sent))
 
 
+# At most one email per address in this window, so a keen refresher or a
+# curious visitor cannot fill the admin's inbox.
+LOGIN_EMAIL_COOLDOWN_MIN = 10
+
+
+def _recently_requested(email: str) -> bool:
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=LOGIN_EMAIL_COOLDOWN_MIN)
+    for e in db.recent_events(["login_requested"], limit=200):   # newest first
+        if datetime.fromisoformat(e["created_at"]) < cutoff:
+            break
+        try:
+            if json.loads(e["detail"] or "{}").get("email") == email:
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 @app.post("/login")
 def login_submit(request: Request, email: str = Form(...)):
+    """Request a login link.
+
+    With LOGIN_LINK_RECIPIENT=admin (the default) the link is emailed to the
+    admin to forward, and an unregistered address produces a short access
+    request instead. With "user" it goes straight to the joiner.
+    """
+    email = email.strip().lower()
     user = db.get_user_by_email(email)
-    if user:
-        token = db.issue_token(user["id"])
-        url = f"{config.BASE_URL}/auth/{token}"
-        mail.send_magic_link(user["email"], user["name"], url)
-        db.log_event("login_requested", user_id=user["id"], ip=client_ip(request),
-                     user_agent=request.headers.get("user-agent"))
-    # Same response either way, so the form cannot be used to enumerate joiners.
+    if not _recently_requested(email):
+        db.log_event("login_requested", user_id=(user or {}).get("id"),
+                     detail={"email": email, "registered": bool(user)},
+                     ip=client_ip(request), user_agent=request.headers.get("user-agent"))
+        if user:
+            url = f"{config.BASE_URL}/auth/{db.issue_token(user['id'])}"
+            if config.LOGIN_LINK_RECIPIENT == "user":
+                mail.send_magic_link(user["email"], user["name"], url)
+            else:
+                mail.send_login_link_to_admin(user["email"], user["name"], url)
+        elif config.LOGIN_LINK_RECIPIENT != "user":
+            mail.send_access_request_to_admin(email)
+    # Same response whatever happened, so the form cannot be used to find out
+    # who is registered.
     return RedirectResponse("/login?sent=1", status_code=303)
 
 
@@ -417,11 +452,14 @@ def admin_add(request: Request, email: str = Form(...), name: str = Form(""),
     require_admin(request, token)
     user = db.create_user(email, name)
     link = f"{config.BASE_URL}/auth/{db.issue_token(user['id'])}"
-    sent = mail.send_magic_link(user["email"], user["name"], link)
+    sent = False
+    if config.LOGIN_LINK_RECIPIENT == "user":
+        sent = mail.send_magic_link(user["email"], user["name"], link)
     if not sent:
-        log.warning("Magic link for %s: %s", user["email"], link)
+        log.info("Magic link for %s: %s", user["email"], link)
     return _admin_page(request, token, new_link={
-        "email": user["email"], "name": user["name"], "url": link, "emailed": sent})
+        "email": user["email"], "name": user["name"], "url": link, "emailed": sent,
+        "mode": config.LOGIN_LINK_RECIPIENT})
 
 
 @app.post("/admin/relink")
@@ -432,11 +470,14 @@ def admin_relink(request: Request, user_id: int = Form(...), token: str = Form("
     if not user:
         raise HTTPException(404, "no such joiner")
     link = f"{config.BASE_URL}/auth/{db.issue_token(user['id'])}"
-    sent = mail.send_magic_link(user["email"], user["name"], link)
+    sent = False
+    if config.LOGIN_LINK_RECIPIENT == "user":
+        sent = mail.send_magic_link(user["email"], user["name"], link)
     if not sent:
-        log.warning("Magic link for %s: %s", user["email"], link)
+        log.info("Magic link for %s: %s", user["email"], link)
     return _admin_page(request, token, new_link={
-        "email": user["email"], "name": user["name"], "url": link, "emailed": sent})
+        "email": user["email"], "name": user["name"], "url": link, "emailed": sent,
+        "mode": config.LOGIN_LINK_RECIPIENT})
 
 
 @app.post("/admin/refresh")

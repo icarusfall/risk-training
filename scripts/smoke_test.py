@@ -30,7 +30,8 @@ from app import checks, config, db  # noqa: E402
 from app.main import app  # noqa: E402
 
 PAGES = ["/", "/data", "/data?dataset=long", "/login", "/robots.txt",
-         "/llms.txt", "/healthz", "/favicon.ico", "/static/img/var-tail.png"]
+         "/llms.txt", "/healthz", "/favicon.ico", "/static/img/var-tail.png",
+         "/login?sent=1"]
 MODULES = ["orientation", "data", "returns", "covariance", "tracking-error",
            "ewma", "var", "factor-model", "cross-sectional", "pca", "bake-off"]
 DOWNLOADS = ["prices", "benchmarks", "universe", "quality", "workbook"]
@@ -64,6 +65,21 @@ def main() -> int:
                                       follow_redirects=False).status_code, 303)
     check("/auth/<invalid>", client.get("/auth/not-a-real-token",
                                         follow_redirects=False).status_code, 400)
+
+    print("sign-in requests")
+    import uuid
+    fresh = db.create_user(f"login-{uuid.uuid4().hex[:8]}@example.invalid", "Login Test")
+    stranger = f"stranger-{uuid.uuid4().hex[:8]}@example.invalid"
+    before = len(db.recent_events(["login_requested"], limit=1000))
+    for label, addr in [("registered", fresh["email"]), ("unregistered", stranger),
+                        ("registered, repeated", fresh["email"])]:
+        check(f"POST /login {label}", client.post(
+            "/login", data={"email": addr}, follow_redirects=False).status_code, 303)
+    added = len(db.recent_events(["login_requested"], limit=1000)) - before
+    if added != 2:
+        failures.append(f"login requests: expected 2 events (repeat throttled), got {added}")
+    print(f"  {'repeat request throttled':32s} {'ok' if added == 2 else '<-- FAIL'}")
+    db.delete_user(fresh["id"])
 
     print("admin")
     check("/admin?token=", TestClient(app).get(
