@@ -331,3 +331,6 @@ gap is 0.17. Compute both on your own portfolio and see how far apart they land.
 4. The line extrapolates sensibly within a volatility regime, and its error bars
    widen fast the further you push it.
 5. The slope of the tail is stable over time. Its position moves with volatility.
+
+[Module 13](/module/monte-carlo) turns the tail into a distribution you can
+simulate, and asks how a portfolio's holdings fall together.

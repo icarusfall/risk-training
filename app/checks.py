@@ -328,6 +328,33 @@ def _pl_years_20(c):
     return A.power_law_years_between(_power_law_fit(c), 0.20)
 
 
+# --- module 13: Student-t, copulas and Monte Carlo ---------------------------
+# The market for module 13 is CAPFIXED_TR, not CUKX.L: CUKX only starts in 2010
+# and the one-factor correlations want the whole sample.
+def _market_weekly(ds) -> pd.Series:
+    return M.returns(ds.benchmarks["CAPFIXED_TR"].dropna().to_frame(), "weekly").iloc[:, 0]
+
+
+def _rank_corr_stock_market(c):
+    ds = c["ds"]
+    r = M.returns(ds.prices[[c["stock"]]], "weekly").iloc[:, 0]
+    return A.spearman(r, _market_weekly(ds))
+
+
+def _t4_var(c):
+    return float(100 * A.var_student_t4(_port_return_series(c), conf=0.99))
+
+
+def _mc_t_copula_es(c):
+    ds = c["ds"]
+    rw = M.returns(c["px"], "weekly")
+    mkt = _market_weekly(ds).reindex(rw.index)
+    vols = rw.std(ddof=1).to_numpy()
+    rhos = np.array([rw[n].corr(mkt) for n in c["names"]])
+    out = A.monte_carlo_t_copula(c["w"].to_numpy(), vols, rhos, nu=4)
+    return float(100 * out["es"])
+
+
 # --- module 4: the cash trap ------------------------------------------------
 # A portfolio holding 95% of the BENCHMARK weights plus 5% cash. The only
 # active decision is the cash, so it must carry all of the tracking error - and
@@ -488,7 +515,7 @@ CHECKS: dict[str, Check] = {ck.id: ck for ck in [
           "number", _pl_alpha,
           "=-SLOPE(LN(prob), LN(loss)), with losses as positive numbers. A Power "
           "trendline on a log-log scatter shows the same slope as its exponent. "
-          "Expect something between 3 and 4. Fifty is only a marking convention; "
+          "It usually lands between 3 and 4. Fifty is only a marking convention; "
           "try other cut-offs and watch the answer move."),
     Check("m12_years_20", "12", "Extend your fitted line. On average, how many years "
           "would pass between daily losses of 20% or more? (Use 252 trading days a "
@@ -496,6 +523,23 @@ CHECKS: dict[str, Check] = {ck.id: ck for ck in [
           "The line says P(loss >= x) = EXP(intercept) * x^slope. One over that is "
           "the number of days between such losses; divide by 252. Use the same "
           "units for x as you used for the losses in the fit."),
+
+    Check("m13_rank_corr", "13", "RANK correlation between the weekly returns of "
+          "{stock} and the CAPFIXED_TR benchmark", "number", _rank_corr_stock_market,
+          "CORREL of RANK.AVG of each series. Plain CORREL on the returns is Pearson "
+          "correlation, which is usually close but not the same."),
+    Check("m13_t4_var", "13", "One-week 99% VaR of your portfolio using a Student-t "
+          "with 4 degrees of freedom, as a positive loss (%)", "percent", _t4_var,
+          "-T.INV(0.01, 4) * SQRT(2/4) * the weekly STDEV.S. The SQRT(2/4) rescales "
+          "the t to unit variance. It should be about 14% above the normal VaR."),
+    Check("m13_mc_es", "13", "Simulate your portfolio with version C (t tails, t "
+          "copula, nu = 4, one-factor correlations with CAPFIXED_TR). What is the "
+          "one-week 99% expected shortfall, as a positive loss (%)?", "percent",
+          _mc_t_copula_es,
+          "Use at least 10,000 scenarios, with ONE chi-square draw per scenario "
+          "shared by all 12 holdings. Simulation noise is allowed for: answers "
+          "within 12% are marked correct.",
+          0.12),
 ]}
 
 

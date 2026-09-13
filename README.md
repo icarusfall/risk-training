@@ -24,6 +24,7 @@ joiner's spreadsheet.
 | 10 | Bake-off: five models, one portfolio, bias statistics |
 | 11 | Higher moments: skew, kurtosis, Cornish–Fisher VaR |
 | 12 | Power-law tails: a log-log line through the worst days, and extrapolation |
+| 13 | Student-t, rank correlation, copulas and Monte Carlo |
 
 Lessons live in [`content/`](content/) as markdown — edit them without touching
 any Python.
@@ -44,7 +45,7 @@ key behind. Nothing is hardcoded.
 relative tolerance. `MMULT`, `SUMPRODUCT`, pairwise `COVARIANCE.S` — all pass.
 
 **Each joiner gets their own portfolio**, seeded from their user id, so answers
-cannot be shared. There are 29 self-checks across Modules 1 to 12.
+cannot be shared. There are 32 self-checks across Modules 1 to 13.
 
 **Three datasets.** `raw` is all 100 names exactly as they arrive, ragged and
 uncleaned, for Module 1. `core` (2005 onwards, 81 names, cleaned and trimmed to
@@ -161,8 +162,9 @@ order.
 Charlie's view, 13 September 2026: with Module 12 the syllabus is essentially
 complete. What follows is optional.
 
-1. **Module 13: Monte Carlo, fat-tailed distributions and copulas**, including
-   rank correlation. Spec below.
+1. **Review the Module 13 copy** (Monte Carlo, Student-t, rank correlation and
+   copulas), drafted 13 September 2026, give it a cartoon, then push. It is
+   committed but deliberately not yet live.
 
 2. **Email joiners directly once a sending domain is verified in Resend.** Set
    `MAIL_FROM` to an address on the domain and `LOGIN_LINK_RECIPIENT=user` in
@@ -326,11 +328,50 @@ convention.
 Self-checks, on the joiner's own daily portfolio returns: α from the 50 largest
 losses, and years between 20% daily losses read off the fitted line.
 
-### Possible Module 13: fitted distributions and Monte Carlo
+### Module 13: Student-t, copulas and Monte Carlo
 
-The original Module 12 plan, parked when Module 12 became the power-law
-exercise. Replace the normal distribution rather than adjusting it. Three routes
-(the power law is now covered by Module 12):
+Written as `content/13-monte-carlo.md`, at Charlie's request: Monte Carlo, other
+fat-tailed distributions, and copulas with rank correlation. Verified on the live
+data, 13 September 2026, weekly returns:
+
+- **ν.** From weekly portfolio kurtosis, ν = 4 + 6/K: median 5.14 (4.73–5.72).
+  From Module 12's daily tail exponent: about 3.5. The lesson uses ν = 4, where
+  the t4 quantile has a closed form (`student_t4_ppf`, no scipy).
+- **t4 VaR** multiplier 2.649 (normal 2.326); at 95%, 1.507 (normal 1.645).
+  Across 300 portfolios, relative to historical: 99% t4 0.973× (normal 0.854×),
+  95% t4 1.032× (normal 1.126×). ES99 multiplier 3.70 (normal 2.67); t4 ES is
+  0.977× historical ES.
+- **Rank correlation**, with the 3 weeks of largest |x|+|y| dropped:
+  Barclays/Lloyds Pearson 0.753 → 0.711, rank 0.689 → 0.686; Rio/Anglo 0.717 →
+  0.774, rank 0.798 → 0.802; BP/Shell 0.843 → 0.804, rank 0.789 → 0.787. All
+  3,240 pairs: median Pearson 0.288, rank 0.287; Pearson minus rank, 10th–90th
+  percentile −0.049 to +0.058.
+- **Weeks both in worst 5%** (independence 2.8), actual / Gaussian / t4 copula,
+  calibrated via Kendall's τ, ρ = sin(πτ/2): Barclays/Lloyds 32 / 23.3 / 27.7;
+  Rio/Anglo 30 / 29.0 / 32.8; BP/Shell 30 / 28.5 / 32.5; Barclays/National Grid
+  10 / 4.3 / 9.1; HSBC/Tesco 10 / 8.2 / 13.3; Rio/Unilever 5 / 5.3 / 10.4. All
+  pairs summed (Gaussian calibrated from Spearman, ρ = 2 sin(πρ_s/6)): actual
+  44,864, Gaussian 27,446 (actual 1.63×), t4 44,396, independence 9,023; actual
+  above Gaussian in 95% of pairs. Both in best 5%: 34,569 (asymmetric).
+- **Monte Carlo** with one-factor correlations against `CAPFIXED_TR` (`CUKX.L`
+  starts in 2010). The one-factor vol is 0.956× the full-covariance vol (0.934–0.988).
+  60 portfolios at 200k draws, relative to historical 99% VaR / ES: A normal 0.83 /
+  0.68; B t4 marginals + Gaussian copula 0.88 / 0.78; C t4 copula 0.94 / 0.94.
+  B/A ES +16%, C/B ES +20% (VaR +6%, +8%).
+- **Noise at 10k draws** (portfolio seed 0, 300 replications), relative error
+  median / 95th / 99th: C VaR 2.2% / 5.9% / 7.2%; C ES 3.3% / 9.6% / 11.9%. Hence
+  a 12% tolerance on the Monte Carlo ES check; B's ES is typically 16% below C's,
+  so it usually fails.
+
+Self-checks: rank correlation of the assigned stock with `CAPFIXED_TR`; t4 99%
+VaR of the portfolio; version C 99% ES (rtol 12%, reference 400k draws, fixed
+seed).
+
+### Original Module 12 plan
+
+Parked when Module 12 became the power-law exercise; Module 13 now covers the
+Student-t, copulas and Monte Carlo, but not the GPD. Replace the normal
+distribution rather than adjusting it. Three routes:
 
 | Approach | What it fits | Why |
 |---|---|---|
@@ -360,7 +401,7 @@ Python, which makes this a sensible place to end the programme.
 app/
   main.py            FastAPI routes: pages, checks, downloads, sign-in, admin
   config.py          all settings, overridable by environment variable
-  checks.py          self-check engine (29 checks), per-joiner portfolios
+  checks.py          self-check engine (32 checks), per-joiner portfolios
   canary.py          bait paths, the answers.csv shortcut, cadence detection
   content.py         markdown lesson loader
   db.py              SQLite: users, login tokens, attempts, events

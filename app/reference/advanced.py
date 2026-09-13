@@ -109,6 +109,61 @@ def power_law_years_between(fit: dict, loss: float, days_per_year: int = 252) ->
     return float(1.0 / (p * days_per_year))
 
 
+def student_t4_ppf(p):
+    """Inverse CDF of Student's t with 4 degrees of freedom, in closed form.
+
+    Excel's T.INV(p, 4). Four is the one case with a tidy algebraic inverse,
+    which keeps scipy out of the build; it is also the lesson's choice, sitting
+    between the nu of about 5 implied by weekly kurtosis and the tail exponent
+    of about 3.5 from Module 12.
+    """
+    p = np.asarray(p, dtype=float)
+    a = 4.0 * p * (1.0 - p)
+    q = 2.0 * np.sqrt(np.cos(np.arccos(np.sqrt(a)) / 3.0) / np.sqrt(a) - 1.0)
+    out = np.sign(p - 0.5) * q
+    return float(out) if out.ndim == 0 else out
+
+
+def var_student_t4(port_returns: pd.Series, conf: float = 0.99) -> float:
+    """Parametric VaR with a t4 distribution scaled to the sample volatility.
+
+    A t with nu degrees of freedom has variance nu/(nu-2), so the standardised
+    quantile is T.INV(1-conf, 4) * SQRT(2/4).
+    """
+    sd = float(pd.Series(port_returns).dropna().std(ddof=1))
+    return float(-student_t4_ppf(1 - conf) * math.sqrt(0.5) * sd)
+
+
+def spearman(a: pd.Series, b: pd.Series) -> float:
+    """Rank correlation: CORREL of RANK.AVG, which is what pandas' average rank does."""
+    df = pd.concat([pd.Series(a), pd.Series(b)], axis=1).dropna()
+    return float(df.iloc[:, 0].rank().corr(df.iloc[:, 1].rank()))
+
+
+def monte_carlo_t_copula(w, vols, rhos, nu: int = 4, n_draws: int = 400_000,
+                         conf: float = 0.99, seed: int = 20260913) -> dict:
+    """One-factor t-copula Monte Carlo of a portfolio's return (module 13).
+
+        z_i = rho_i * Z_m + sqrt(1 - rho_i^2) * e_i       correlated normals
+        x_i = z_i * sqrt(nu / chi2_nu)                     ONE chi-square per scenario
+        r_i = vol_i * sqrt((nu - 2) / nu) * x_i            t4 marginals at the right vol
+
+    The shared chi-square is what makes this a t copula: a scenario that draws
+    a small chi-square scales every stock's shock up together, which is how
+    joint crashes get in. The joiner does this with 10,000 RAND rows; the
+    reference uses many more draws and a fixed seed so the answer is stable.
+    """
+    gen = np.random.default_rng(seed)
+    w = np.asarray(w, dtype=float); vols = np.asarray(vols, dtype=float)
+    rhos = np.asarray(rhos, dtype=float)
+    z = (gen.standard_normal((n_draws, 1)) * rhos[None, :]
+         + gen.standard_normal((n_draws, w.size)) * np.sqrt(1 - rhos ** 2)[None, :])
+    x = z * np.sqrt(nu / gen.chisquare(nu, (n_draws, 1)))
+    port = (x * (vols * math.sqrt((nu - 2) / nu))[None, :]) @ w
+    var = float(-np.quantile(port, 1 - conf))
+    return {"var": var, "es": float(-port[port <= -var].mean())}
+
+
 def kupiec_pof(exceptions: int, n: int, conf: float = 0.99) -> dict:
     """Kupiec proportion-of-failures test.
 
