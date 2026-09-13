@@ -79,6 +79,30 @@ for homogeneous functions: &sigma;<sub>p</sub>(w) is homogeneous of degree one i
 
 That single property is why the entire risk industry reports risk this way.
 
+!!! tip "A simple way to think about it"
+    A simple way to think about this is that we are adding up the rows and
+    columns of a matrix that has been scaled by the weights.
+
+    Take the covariance matrix and multiply every cell by the weight of its row
+    **and** the weight of its column, so cell (i, j) becomes
+    w<sub>i</sub> w<sub>j</sub> &Sigma;<sub>ij</sub>. Add up every cell in that
+    grid and you get the portfolio variance &mdash; exactly the
+    w&prime;&Sigma;w from Module 3, just done by hand.
+
+    Now, at the last step, add up the grid one column at a time instead of all at
+    once. You are left with a single row of numbers, one per holding, that add up
+    to the total. That row is the amount each holding &mdash; or, later on, each
+    factor &mdash; contributes to it.
+
+    The one wrinkle: that row adds up to the total **variance**. Divide each
+    number by the portfolio volatility and the row adds up to the **volatility**
+    instead. Those are your CTRs, and it is the same number as the formula above.
+    ```
+    grid cell      =B$1 * $A2 * Cov!B2        ' weight across row 1, weight down column A
+    column total   =SUM(B2:B13)               ' one per holding
+    CTR            =B15 / SQRT(SUM(B15:M15))  ' divide by portfolio vol
+    ```
+
 !!! excel "Doing it in Excel"
     With weights in `B2:B13` and covariance in `Cov!B2:M13`:
 
