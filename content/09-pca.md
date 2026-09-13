@@ -136,7 +136,7 @@ loading within each ICB industry:
 | Real Estate | **+0.086** |
 
 Global commodities at one end, domestic UK financials and property at the other.
-That is a genuinely FTSE-specific axis: this index staples a set of enormous
+That is a very FTSE-specific axis: this index staples a set of enormous
 global miners and oil majors onto a set of domestic British banks and REITs, and
 the second-largest source of common variation is the tension between them.
 
@@ -170,7 +170,7 @@ riskless.
 
 ## How many components?
 
-Here is the awkward number: on this data it takes **30 components** to reach 80%
+On this data it takes **30 components** to reach 80%
 of total variance.
 
 So 81 stocks do not live on a five-dimensional manifold. PC1 gets you a third,

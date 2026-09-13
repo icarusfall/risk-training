@@ -16,7 +16,7 @@ something happened to that company. Write it down:
 
 <div class="formula">r<sub>i,t</sub> = &alpha;<sub>i</sub> + &beta;<sub>i</sub> r<sub>m,t</sub> + &epsilon;<sub>i,t</sub></div>
 
-If the &epsilon;s are genuinely independent across stocks &mdash; everything
+If the &epsilon;s are independent across stocks &mdash; everything
 common is captured by the market &mdash; then the covariance between any two
 stocks has a very simple form:
 
@@ -28,7 +28,7 @@ Or in matrix form:
 <div class="formula">&Sigma; = &beta;&beta;&prime; &sigma;<sub>m</sub><sup>2</sup> + D</div>
 
 Count the parameters: 81 betas, 81 residual variances, one market variance.
-**163 numbers instead of 3,321.** That is the entire argument for factor models.
+**163 numbers instead of 3,321.** That is the main argument for factor models.
 
 ## Step 1: choose the market properly
 

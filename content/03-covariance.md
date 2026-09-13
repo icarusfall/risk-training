@@ -47,7 +47,7 @@ For N stocks, &Sigma; is an N&times;N matrix where the entry in row *i*, column
 *j* is the covariance between stock *i* and stock *j*. The diagonal holds each
 stock's variance.
 
-With 81 names that is 6,561 cells, or 3,321 genuinely distinct numbers. You are
+With 81 names that is 6,561 cells, or 3,321 distinct numbers. You are
 not going to type 3,321 formulas.
 
 ## The quick way: a grid of `COVARIANCE.S`
@@ -127,7 +127,7 @@ Take your weekly returns as a matrix **R** with T rows (dates) and N columns
 
 <div class="formula">&Sigma; = R&prime;R / (T &minus; 1)</div>
 
-That is the entire thing. One transpose, one matrix multiply, one division.
+That is all there is to it.
 
 Why it works: the (i,j) entry of R&prime;R is the sum over all dates of
 r<sub>i,t</sub> &times; r<sub>j,t</sub>. Since the columns are demeaned, that sum
@@ -207,7 +207,7 @@ Now the payoff. With a weight vector **w**:
 
     Make sure your weight order matches your covariance row order **exactly**.
     This is the second most common bug, and it produces a plausible-looking wrong
-    answer, which is the worst kind.
+    answer, which is much harder to spot than an error.
 
     If you would rather avoid `MMULT` entirely:
     ```
@@ -219,8 +219,7 @@ Now the payoff. With a weight vector **w**:
 ## What you should notice
 
 Your portfolio's volatility should come out **below** the weighted average of the
-individual stock volatilities. That gap is diversification, and it is the only
-free lunch in the business. Compute both and look at the difference.
+individual stock volatilities. That gap is diversification, often called the only free lunch in finance. Compute both and look at the difference.
 
 Now try it: set one weight to 100% and the rest to zero. You should get that
 stock's own volatility back. If you do not, your alignment is wrong.

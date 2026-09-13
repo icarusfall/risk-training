@@ -47,8 +47,7 @@ own holdings, renormalised to 100%.
 
 ## Where does the risk come from?
 
-Here is the question you will be asked most often in this job: *which position is
-driving this?* The naive answer &mdash; "the biggest weight" &mdash; is often
+A question you will be asked often in this job is *which position is driving this?* The naive answer &mdash; "the biggest weight" &mdash; is often
 wrong, because a large position in a placid utility can matter less than a small
 one in a miner. Though in practice, as you are about to see, the boring answer
 holds up more often than people expect.
@@ -164,7 +163,7 @@ active risk, which is where this module ends up.
 
 !!! warning "Contributions can be negative"
     If a holding is negatively correlated with the rest of the portfolio, its CTR
-    is negative &mdash; it genuinely *reduces* total risk. The contributions still
+    is negative &mdash; it *reduces* total risk. The contributions still
     sum to &sigma;<sub>p</sub>. This surprises people, so be ready for it.
 
 ## Now the important bit: decomposing active risk
@@ -224,7 +223,7 @@ benchmark-relative return is r<sub>cash</sub> &minus; r<sub>b</sub> =
 nothing safe about it.
 
 The plain covariance matrix cannot see this, because it describes **absolute**
-returns, and in absolute terms cash genuinely is riskless. A zero row in &Sigma;
+returns, and in absolute terms cash really is riskless. A zero row in &Sigma;
 forces a zero contribution no matter how large the active weight sitting against
 it. And the Euler identity still holds &mdash; the contributions still sum to the
 tracking error &mdash; so nothing looks broken. The report is simply pointing at
@@ -354,8 +353,7 @@ the naive decomposition will quietly under-attribute.
     The naive one asks *"if I scale this active position on its own, what happens
     to tracking error?"* The rotated one asks *"if I scale this holding, funded
     out of the benchmark, what happens?"* The second is what actually happens
-    when you trade, which is why it is the better default &mdash; but they do
-    genuinely differ.
+    when you trade, which is why it is the better default &mdash; but they do differ.
 
     You can see the difference without any cash at all. Take a portfolio with two
     stock tilts and everything else at benchmark weight. The naive decomposition

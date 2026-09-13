@@ -31,7 +31,7 @@ Module 3 sample-covariance prediction over the same window.
 They will match almost exactly. On the equal-weighted portfolio over the 156
 weeks to September 2026, both come out at **13.05%**.
 
-This is not a triumph. It is arithmetic. The sample covariance is *fitted to*
+This is not evidence that the model is any good. The sample covariance is *fitted to*
 that window, so of course it reproduces it &mdash; asking a model to predict the
 data it was estimated on tells you nothing at all about forecasting.
 
@@ -109,8 +109,7 @@ count as well.
 
 ## Test 2: the crises, one at a time
 
-An average across twenty years tells you about the average week. Nobody cares
-about the average week.
+An average across twenty years tells you about the average week, which is rarely the week anyone is worried about.
 
 Run your forecasts through each episode and compare EWMA(0.94) with a rolling
 104-week window:

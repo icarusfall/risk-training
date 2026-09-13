@@ -27,7 +27,7 @@ or for having momentum, or for being a miner.
 
 Note what has swapped places. In Module 7 the factor return (the market) was
 observable and beta was estimated. Here the exposure is observable and the factor
-return is estimated. That is the whole trick.
+return is estimated.
 
 !!! tip "Why this beats a time-series model"
     Exposures are observable *now*. A company that listed three months ago has no
@@ -176,8 +176,7 @@ Now assemble it:
 
 On this data the median specific volatility comes out around **21% annualised**,
 with a range of roughly 5% to 40%. So a typical FTSE 100 stock has about 21
-points of volatility that no factor in our model explains. That is not a failure
-&mdash; specific risk is real, and it is the part a stock-picker is paid to take.
+points of volatility that no factor in our model explains. That is expected: specific risk is real, and it is the part a stock-picker is paid to take.
 
 ### Count the parameters
 
@@ -234,7 +233,7 @@ The reason is our industry classification. `ind_Financials` contains 27 names:
 five banks, but also life insurers, general insurers, asset managers, private
 equity vehicles and a couple of investment trusts. Barclays and Aviva and 3i all
 load 1.0 on the same factor. So the "Financials" factor return is an average
-across a genuinely heterogeneous set of businesses, and it is far too diluted to
+across a heterogeneous set of businesses, and it is far too diluted to
 capture the thing that makes *banks* move together.
 
 The miners have no such problem: `ind_Basic Materials` is seven names, nearly all
@@ -255,8 +254,7 @@ of them actual miners, so the factor means something specific.
 
     Try it: split `ind_Financials` into `ind_Banks` and `ind_OtherFinancials` and
     re-run. Watch the bank portfolio's estimate improve and something else get
-    slightly worse. There is no free lunch here, only a choice about where you
-    would rather be wrong.
+    slightly worse. Neither choice is free; it comes down to where you would rather be wrong.
 
 !!! danger "And our classification has a worse problem than granularity"
     Look up the sector labels our source actually provides, on the
@@ -273,8 +271,7 @@ of them actual miners, so the factor means something specific.
     the same label, so our mapping puts both in Consumer Discretionary. Same
     story with housebuilders sitting alongside Reckitt.
 
-    No rule based on the *label* can fix this, because the label genuinely does
-    not distinguish them. It needs a per-company override, which means somebody
+    No rule based on the *label* can fix this, because the label does not distinguish them. It needs a per-company override, which means somebody
     has to make and maintain 100 judgement calls.
 
     We have left it as it is, deliberately, so you can see it. But note what it

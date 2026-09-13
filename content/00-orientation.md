@@ -9,7 +9,7 @@ time: 15 min
 Welcome to the team.
 
 Over the next few days you are going to build a working equity risk model from
-nothing more than a column of prices. Not a toy: by the end you will have four
+nothing more than a column of prices. By the end you will have four
 different models of the same portfolio, you will know why they disagree, and you
 will have an opinion about which one you would have trusted in March 2020.
 
@@ -24,8 +24,7 @@ that listed in 2021 belongs in a covariance matrix estimated since 2005.
 
 In Excel you have to decide all of it, by hand, and you can see every number.
 When your tracking error comes out at 0.02% you will go and look, and you will
-find that you left a row of zeros at the top of the returns block. That hour is
-the point of the exercise.
+find that you left a row of zeros at the top of the returns block. That hour is a large part of what the exercise is for.
 
 !!! tip "You will use Python eventually"
     Everyone on this team does. But you will be much better at it having once

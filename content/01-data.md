@@ -163,7 +163,7 @@ back into the index. Over twenty years that difference compounds into something
 enormous, and if you compare the wrong pair of series you will draw the wrong
 conclusion.
 
-Here is the trap. Two of the series look like they should be identical:
+Two of the series look as though they should be identical:
 
 - `ISF.L` &mdash; iShares Core FTSE 100, **distributing**
 - `CUKX.L` &mdash; iShares Core FTSE 100, **accumulating**
@@ -177,7 +177,7 @@ Compute the annualised return of each, over the period where both exist.
 
 You should find `CUKX.L` beating `ISF.L` by around 3.7% a year, which is the FTSE
 100 dividend yield. The accumulating share class reinvests dividends inside the
-fund, so its price genuinely is a total return. The distributing one pays them
+fund, so its price is a total return. The distributing one pays them
 out &mdash; and our data provider's "adjusted" series does not add them back,
 despite appearances. `ISF.L` tracks the **price** index to within 0.1% a year.
 
@@ -198,7 +198,7 @@ Three names in the FTSE 100 are not quoted in sterling: Compass and IHG in US
 dollars, Metlen in euros. We have converted them to pence so the file is
 consistent &mdash; but be clear about what that means. Their return series now
 contains an **unhedged FX move** as well as a stock move. For a sterling investor
-that is genuinely part of the risk. For understanding the *business*, it is noise.
+that is part of the risk. For understanding the *business*, it is noise.
 Real risk systems split the two.
 
 ---
