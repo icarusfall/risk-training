@@ -42,7 +42,12 @@ key behind. Nothing is hardcoded.
 relative tolerance. `MMULT`, `SUMPRODUCT`, pairwise `COVARIANCE.S` — all pass.
 
 **Each joiner gets their own portfolio**, seeded from their user id, so answers
-cannot be shared.
+cannot be shared. There are 23 self-checks across Modules 1 to 10.
+
+**Three datasets.** `raw` is all 100 names exactly as they arrive, ragged and
+uncleaned, for Module 1. `core` (2005 onwards, 81 names, cleaned and trimmed to
+a rectangle) is the default and what every answer is computed from. `long`
+(1995 onwards, 57 names) trades breadth for history.
 
 ### The data is dirty, deliberately and otherwise
 
@@ -84,13 +89,19 @@ python -c "from app import db; db.init(); u=db.create_user('you@lgim.com','You',
 Open that link. With no `RESEND_API_KEY` set, magic links are written to the
 server log instead of emailed.
 
+**Run `python scripts/smoke_test.py` before every push.** It hits every route
+in-process with deprecation warnings escalated to errors, grades all 23 checks,
+and checks the canary, downloads, images and sign-in flow.
+
 ## Deploying to Railway
 
 1. Point a Railway project at this repo. `railway.json` handles the rest.
 2. **Add a volume mounted at `/data`** and set `DATA_DIR=/data`. Without it the
    price cache and the SQLite database are wiped on every redeploy.
 3. Set the variables in [`.env.example`](.env.example) — at minimum `SECRET_KEY`,
-   `BASE_URL` and `ADMIN_TOKEN`.
+   `BASE_URL`, `ADMIN_TOKEN` and `ADMIN_EMAIL`. While Resend is on its sandbox
+   sender, leave `LOGIN_LINK_RECIPIENT` at its default of `admin`, so sign-in
+   links are emailed to the admin to forward.
 4. Visit `/admin?token=<ADMIN_TOKEN>` to add joiners and email them links.
 
 ## The canary
@@ -121,126 +132,167 @@ Treat a hit as a reason to ask how someone is getting on, never as proof.
 The welcome page states that usage is logged. Worth keeping: it makes the signal
 more meaningful, and at a regulated firm employee monitoring deserves the notice.
 
-## Planned
+## To do
 
-All eleven modules are written. Planned work below.
+The copy review of all eleven modules finished on 13 September 2026. Work through
+these roughly in order.
 
-**Illustrations throughout.** Do loads of pictures, once the copy review is
-finished. The Module 6 volatility-versus-VaR cartoon set the style: hand-drawn,
-XKCD-like, generated in ChatGPT from a prompt that pins down labels and which
-tail is shaded, saved to `app/static/img/`, compressed with octree quantisation
-(median-cut destroys the pastel accent colour), and embedded as a captioned
-figure. Candidate spots so far:
+1. **Illustrations throughout.** Charlie's request: "do loads of pictures". The
+   Module 6 volatility-versus-VaR cartoon sets the style and the workflow:
+   - Draft a precise prompt for a hand-drawn, XKCD-style image. Pin down the exact
+     label wording, which side anything is shaded, and a single accent colour
+     (site pink `#E9B8BC`).
+   - Charlie generates it in ChatGPT and saves it to `app/static/img/`.
+   - Check the drawing is mathematically right and every label is spelled
+     correctly.
+   - Compress: resize to 1400px wide and quantise with Pillow's octree method at
+     128 colours (about 50KB). Median-cut quantisation removes the pastel accent
+     entirely, so count accent pixels before and after.
+   - Embed as a `<figure class="figure">` with full alt text and a caption, and add
+     the path to `PAGES` in the smoke test.
 
-- Module 1: a price that drops tenfold for one day and bounces straight back.
-- Module 4: cash as a short position in the index.
-- Module 5: the anniversary cliff, as the Covid crash leaves a 52-week window.
-- Module 8: the observed-essence question - is this car maker really a bank?
-- Module 9: PC1 turning out to be the market.
-- Module 11: fat tails against the normal, drawn as a pair with the VaR image.
+   Candidate spots:
+   - Module 1: a price that drops tenfold for one day and bounces straight back.
+   - Module 4: cash as a short position in the index.
+   - Module 5: the anniversary cliff, as the Covid crash leaves a 52-week window.
+   - Module 8: the observed-exposure question. Is this car maker really a bank?
+   - Module 9: PC1 turning out to be the market.
+   - Module 11: fat tails against the normal, drawn as a pair with the VaR image.
 
-**Module 11 — higher moments.** Skew, kurtosis, and a lesson in how badly the
-fourth moment behaves. Measured on the `CAPFIXED_TR` benchmark, weekly returns,
-2005 onwards — the only thing that changes between rows is which weekday the
-week is sampled on:
+2. **Module 11: higher moments.** Spec below.
+
+3. **Module 12: fat-tailed distributions and Monte Carlo.** Spec below.
+
+4. **Email joiners directly once a sending domain is verified in Resend.** Set
+   `MAIL_FROM` to an address on the domain and `LOGIN_LINK_RECIPIENT=user` in
+   Railway. Until then the sign-in form emails links to `ADMIN_EMAIL` to forward.
+
+When writing new lesson copy, follow the house style: plain and warm, jokes and
+concrete images welcome, no "it is not X, it is Y" punch finishes, and every
+figure computed on the live data before it goes in.
+
+### Parked
+
+- **A Python track.** Excel is deliberate for now. Module 12 is the natural place
+  to point towards Python.
+- **A real value factor**, if a point-in-time fundamentals source becomes
+  available. It would plug into `build_exposures` in `app/reference/advanced.py`.
+- **Sharing with other teams.** Needs the sending domain above.
+
+### Decided against
+
+- **Per-company industry overrides**, such as moving Unilever and Reckitt to
+  Consumer Staples. The mixed-up source labels are left in on purpose as a
+  Module 8 teaching point.
+
+## Specs
+
+### Module 11: higher moments
+
+Skew, kurtosis, and how badly the fourth moment behaves. Measured on the
+`CAPFIXED_TR` benchmark, weekly returns on complete weeks from 2005 onwards,
+changing only which weekday each week is sampled on (recomputed 13 September
+2026; re-verify on the live data when writing the lesson):
 
 | Anchor | Skew | Excess kurtosis | Ann. vol |
 |---|---|---|---|
 | Mon | −0.25 | 5.68 | 17.86% |
 | Tue | +0.02 | 7.51 | 16.91% |
-| Wed | −0.47 | 5.65 | 17.11% |
-| Thu | −0.88 | 9.08 | 17.31% |
+| Wed | −0.47 | 5.64 | 17.11% |
+| Thu | −0.88 | 9.06 | 17.32% |
 | Fri | −0.85 | 10.49 | 17.77% |
 
-Kurtosis nearly doubles and skew changes sign, while volatility moves 5.4%. The
-second moment is a stable statistic; the fourth is not.
+Kurtosis nearly doubles from one anchor to another (a spread of 4.85, about 63%
+of its mean) and skew changes sign, while volatility moves by about 5%.
 
-**The mechanism, which is the actual lesson:** it is whether the bucketing
-*captures* an outlier or *smooths over* it. A crash runs across several days. If
-the week boundary falls outside it, the whole collapse lands in one bucket and
-shows up as a single enormous return. If the boundary falls inside it, the crash
-is split across two buckets and averaged away.
+**The mechanism** is Charlie's: whether the weekly bucketing captures an outlier
+or smooths over it. A crash runs across several days. If the week boundary falls
+outside it, the whole collapse lands in one bucket as a single large return. If
+the boundary falls inside it, the crash is split across two buckets.
 
 October 2008, daily: −7.6%, −0.2%, −5.7%, −1.2%, −9.1%, then a rebound.
 
 | Anchor | Same fortnight, weekly |
 |---|---|
-| Friday | **−21.8%**, then +2.5% — collapse captured whole |
-| Wednesday | −12.4%, then −6.8% — split down the middle |
-| Monday | −3.5%, then −9.0% — split, and partly offset by the rebound |
+| Friday | **−21.8%**, then +2.5%: the collapse captured in one week |
+| Wednesday | −12.4%, then −6.8%: split down the middle |
+| Monday | −3.5%, then −9.0%: split, and partly offset by the rebound |
 
 Across the five anchors, the correlation between excess kurtosis and the number
-of weeks holding two or more of the twenty worst days is **+0.90**. Fat tails
-appear when the sampling grid happens to bundle bad days together.
+of weeks holding two or more of the twenty worst days is **+0.90**.
 
-The corollary: dropping the three most extreme weeks out of 1,115 shrinks the
-kurtosis spread from 4.84 to 1.29. Three quarters of the disagreement rests on
-three observations, which is what "the fourth moment barely converges" means in
-practice.
+Dropping the three most extreme weeks out of about 1,114 shrinks the kurtosis
+spread from 4.85 to 1.29, so most of the disagreement rests on three
+observations.
 
-Note this is a *different* criterion from Module 2. Wednesday sampling is right
-for volatility because it avoids stale prints; it is not right for kurtosis for
-that reason. There is no monotone relationship between stale weeks and kurtosis
-(Monday has the most stale weeks at 106 and near-lowest kurtosis), so do not
-claim one.
+Wednesday sampling is right for volatility because it avoids stale prints. That
+is a different criterion, and there is no monotone relationship between stale
+weeks and kurtosis (Monday has the most stale weeks at 106 and near-lowest
+kurtosis), so do not claim one.
 
-Then the payoff: **Cornish–Fisher VaR**, which adjusts the normal quantile for
-skew and kurtosis:
+Then **Cornish–Fisher VaR**, which adjusts the normal quantile for skew and
+kurtosis:
 
 ```
 z_cf = z + (z²−1)·S/6 + (z³−3z)·K/24 − (2z³−5z)·S²/36
 ```
 
-It sits neatly between parametric and historical VaR in Module 6 — and having
-just watched kurtosis swing by a factor of two, a joiner is well placed to ask
-how much they trust a VaR number that depends on it.
+It sits between parametric and historical VaR from Module 6, and after watching
+kurtosis swing by a factor of two, a joiner is well placed to ask how much they
+trust a VaR number that depends on it.
 
-**Module 12 — fat-tailed distributions and Monte Carlo.** Stop patching the
-normal and replace it. Three routes, in increasing severity:
+### Module 12: fat-tailed distributions and Monte Carlo
 
-| Approach | What it fits | Why bother |
+Replace the normal distribution rather than adjusting it. Three routes:
+
+| Approach | What it fits | Why |
 |---|---|---|
-| Student-t | a single degrees-of-freedom parameter | fits the *whole* distribution, and ν falls straight out of the kurtosis from Module 11 |
-| Power law / Hill estimator | the tail index α | asks only how heavy the tail is, ignoring the bulk |
+| Student-t | a single degrees-of-freedom parameter | fits the whole distribution, and ν can be backed out of the Module 11 kurtosis |
+| Power law / Hill estimator | the tail index α | looks only at how heavy the tail is |
 | Generalised Pareto (EVT) | exceedances over a threshold | the peaks-over-threshold theorem says the tail converges to GPD whatever the parent distribution |
 
-Then Monte Carlo: draw from the fitted distribution rather than evaluating a
-quantile formula. That gets you a full loss distribution instead of a single
-number, handles a portfolio with options or non-linear payoffs, and makes
-expected shortfall fall out for free.
+Then Monte Carlo: draw from the fitted distribution to get a full loss
+distribution rather than a single quantile. It handles non-linear payoffs, and
+expected shortfall comes out of it directly.
 
-Two things worth making explicit when this gets written. Multivariate is where
-it gets hard — a t-copula with correlated marginals is the honest version, and
-drawing each stock independently from its own fat-tailed marginal badly
-understates joint tail risk, which is precisely the thing that kills you.
-And threshold choice in EVT is the whole game: too high and you have five
-observations, too low and the asymptotics do not hold. A mean-excess plot is
-the standard diagnostic, and reasonable people disagree.
+Two things to cover properly when this is written:
+- **Multivariate draws.** A t-copula with correlated marginals is the honest
+  version. Drawing each stock independently from its own fat-tailed marginal
+  badly understates joint tail risk, which is the case that matters most.
+- **EVT threshold choice.** Too high and there are only a handful of
+  observations; too low and the asymptotics do not hold. A mean-excess plot is
+  the standard diagnostic, and people reasonably disagree.
 
-Doing this in Excel is feasible but strained — `T.INV`, `RAND()` and a data
-table will get a single-asset Monte Carlo going. This is probably the point where
-the exercise earns its move to Python, which is a fine note to end the programme
-on.
+Excel can manage a single-asset Monte Carlo with `T.INV`, `RAND()` and a data
+table, but a copula across 81 names is where the exercise is better done in
+Python, which makes this a sensible place to end the programme.
 
 ## Layout
 
 ```
 app/
-  main.py            FastAPI routes
-  checks.py          self-check engine, per-joiner portfolios
-  canary.py          bait paths and cadence detection
+  main.py            FastAPI routes: pages, checks, downloads, sign-in, admin
+  config.py          all settings, overridable by environment variable
+  checks.py          self-check engine (23 checks), per-joiner portfolios
+  canary.py          bait paths, the answers.csv shortcut, cadence detection
   content.py         markdown lesson loader
-  db.py              SQLite: users, attempts, events
+  db.py              SQLite: users, login tokens, attempts, events
+  mail.py            Resend email: login links, access requests, alerts
   data/
     universe.py      constituents from Wikipedia
-    industry.py      40 sectors → 11 ICB industries
+    industry.py      40 sectors -> 11 ICB industries
     instruments.py   shares outstanding, FX normalisation
+    descriptions.py  plain-English company descriptions for the front page
     quality.py       bad-print detection and repair
     store.py         price cache, non-blocking refresh
-    datasets.py      canonical windows (core / long)
+    datasets.py      raw / core / long datasets
     exports.py       CSVs and the starter workbook
   reference/
-    model.py         returns, covariance, portfolio risk
-    advanced.py      VaR, factor models, PCA
-content/             the lessons
+    model.py         returns, covariance, portfolio and active-space risk
+    advanced.py      VaR, factor models, PCA, bias statistics
+  static/            style.css, img/ for lesson illustrations
+  templates/         page templates
+content/             the lessons, as markdown
+scripts/
+  smoke_test.py      run before every push
 ```
