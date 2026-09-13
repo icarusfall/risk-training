@@ -312,6 +312,22 @@ def _var_cf(c):
     return float(100 * A.var_cornish_fisher(_port_return_series(c), conf=0.99))
 
 
+# --- module 12: power-law tails ---------------------------------------------
+# Daily, not weekly: 50 losses out of 5,405 days is the worst 1%.
+def _power_law_fit(c) -> dict:
+    r = M.returns(c["px"], "daily")
+    pr = pd.Series(r.to_numpy() @ c["w"].to_numpy(), index=r.index)
+    return A.power_law_tail(pr, k=50)
+
+
+def _pl_alpha(c):
+    return _power_law_fit(c)["alpha"]
+
+
+def _pl_years_20(c):
+    return A.power_law_years_between(_power_law_fit(c), 0.20)
+
+
 # --- module 4: the cash trap ------------------------------------------------
 # A portfolio holding 95% of the BENCHMARK weights plus 5% cash. The only
 # active decision is the cash, so it must carry all of the tracking error - and
@@ -464,6 +480,22 @@ CHECKS: dict[str, Check] = {ck.id: ck for ck in [
           "a positive loss (%)", "percent", _var_cf,
           "Adjust z = NORM.S.INV(0.01) using SKEW and KURT, then multiply by the "
           "weekly STDEV.S. It should come out ABOVE your historical VaR."),
+
+    Check("m12_alpha", "12", "Take the 50 largest DAILY losses of your portfolio. "
+          "Rank them 1 to 50, largest first, and give each the probability rank / n, "
+          "where n is the total number of daily returns. Regress LN(probability) on "
+          "LN(loss). What is the tail exponent alpha (minus the slope)?",
+          "number", _pl_alpha,
+          "=-SLOPE(LN(prob), LN(loss)), with losses as positive numbers. A Power "
+          "trendline on a log-log scatter shows the same slope as its exponent. "
+          "Expect something between 3 and 4. Fifty is only a marking convention; "
+          "try other cut-offs and watch the answer move."),
+    Check("m12_years_20", "12", "Extend your fitted line. On average, how many years "
+          "would pass between daily losses of 20% or more? (Use 252 trading days a "
+          "year.)", "number", _pl_years_20,
+          "The line says P(loss >= x) = EXP(intercept) * x^slope. One over that is "
+          "the number of days between such losses; divide by 252. Use the same "
+          "units for x as you used for the losses in the fit."),
 ]}
 
 

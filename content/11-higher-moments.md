@@ -317,8 +317,8 @@ higher than the Wednesday one, against 3% for historical VaR.
 
 So the question from Module 6 comes back sharper. A risk number that jumps by a
 third when you change the day of the week you sample on is telling you more about
-three weeks in 2008 and 2020 than about next week. Module 12 takes the other
-route and replaces the normal distribution altogether.
+three weeks in 2008 and 2020 than about next week. [Module 12](/module/power-law)
+stops summarising the tail with moments and looks at the tail itself.
 
 ---
 

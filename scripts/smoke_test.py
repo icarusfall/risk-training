@@ -39,7 +39,7 @@ PAGES += [f"/static/img/{name}.png" for name in [
     "higher-moments-fat-tails"]]
 MODULES = ["orientation", "data", "returns", "covariance", "tracking-error",
            "ewma", "var", "factor-model", "cross-sectional", "pca", "bake-off",
-           "higher-moments"]
+           "higher-moments", "power-law"]
 DOWNLOADS = ["prices", "benchmarks", "universe", "quality", "workbook"]
 
 

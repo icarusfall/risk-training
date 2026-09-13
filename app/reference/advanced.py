@@ -81,6 +81,34 @@ def var_cornish_fisher(port_returns: pd.Series, conf: float = 0.99) -> float:
     return float(-z * r.std(ddof=1))
 
 
+def power_law_tail(returns: pd.Series, k: int = 50) -> dict:
+    """Fit a power law to the k largest losses (module 12).
+
+    Losses are ranked largest first, and the i-th is given the exceedance
+    probability i/n with n the TOTAL number of returns. Regressing ln(i/n) on
+    ln(loss) gives slope -alpha. That is exactly what Excel's Power trendline
+    does on a log-log scatter, so the joiner's chart and this function agree.
+
+    The slope does not depend on n, or on whether losses are in decimals or
+    percent; only the intercept does. Hill is returned as the statistician's
+    second opinion.
+    """
+    losses = np.sort(-pd.Series(returns).dropna().to_numpy(dtype=float))[::-1]
+    n = losses.size
+    x = losses[:k]
+    lx, lp = np.log(x), np.log(np.arange(1, k + 1) / n)
+    slope, intercept = np.polyfit(lx, lp, 1)
+    return {"alpha": float(-slope), "intercept": float(intercept), "n": int(n),
+            "r_squared": float(np.corrcoef(lx, lp)[0, 1] ** 2),
+            "hill": float(1.0 / np.mean(np.log(x / losses[k])))}
+
+
+def power_law_years_between(fit: dict, loss: float, days_per_year: int = 252) -> float:
+    """Average years between daily losses of at least `loss`, read off the line."""
+    p = math.exp(fit["intercept"]) * loss ** (-fit["alpha"])
+    return float(1.0 / (p * days_per_year))
+
+
 def kupiec_pof(exceptions: int, n: int, conf: float = 0.99) -> dict:
     """Kupiec proportion-of-failures test.
 

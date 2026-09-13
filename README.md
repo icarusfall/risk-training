@@ -23,6 +23,7 @@ joiner's spreadsheet.
 | 9 | Statistical / PCA model, eigenvectors by power iteration |
 | 10 | Bake-off: five models, one portfolio, bias statistics |
 | 11 | Higher moments: skew, kurtosis, Cornish–Fisher VaR |
+| 12 | Power-law tails: a log-log line through the worst days, and extrapolation |
 
 Lessons live in [`content/`](content/) as markdown — edit them without touching
 any Python.
@@ -43,7 +44,7 @@ key behind. Nothing is hardcoded.
 relative tolerance. `MMULT`, `SUMPRODUCT`, pairwise `COVARIANCE.S` — all pass.
 
 **Each joiner gets their own portfolio**, seeded from their user id, so answers
-cannot be shared. There are 27 self-checks across Modules 1 to 11.
+cannot be shared. There are 29 self-checks across Modules 1 to 12.
 
 **Three datasets.** `raw` is all 100 names exactly as they arrive, ragged and
 uncleaned, for Module 1. `core` (2005 onwards, 81 names, cleaned and trimmed to
@@ -157,12 +158,10 @@ The copy review of all eleven modules finished on 13 September 2026, and every
 module had its cartoons by the end of the same day. Work through these roughly in
 order.
 
-1. **Review the Module 11 copy**, drafted and illustrated 13 September 2026, then
-   push it. It is committed but deliberately not yet live.
+1. **Review the Module 12 copy**, drafted 13 September 2026, give it a cartoon,
+   then push. It is committed but deliberately not yet live.
 
-2. **Module 12: fat-tailed distributions and Monte Carlo.** Spec below.
-
-3. **Email joiners directly once a sending domain is verified in Resend.** Set
+2. **Email joiners directly once a sending domain is verified in Resend.** Set
    `MAIL_FROM` to an address on the domain and `LOGIN_LINK_RECIPIENT=user` in
    Railway. Until then the sign-in form emails links to `ADMIN_EMAIL` to forward.
 
@@ -172,8 +171,9 @@ figure computed on the live data before it goes in.
 
 ### Parked
 
-- **A Python track.** Excel is deliberate for now. Module 12 is the natural place
-  to point towards Python.
+- **A Python track.** Excel is deliberate for now. A Module 13 on fitted
+  distributions and Monte Carlo (spec below) is the natural place to point
+  towards Python.
 - **A real value factor**, if a point-in-time fundamentals source becomes
   available. It would plug into `build_exposures` in `app/reference/advanced.py`.
 - **Sharing with other teams.** Needs the sending domain above.
@@ -270,9 +270,62 @@ crossover median 96.4%, 10th–90th percentile 95.4–97.3%.
 Self-checks, on the joiner's own Wednesday weekly portfolio returns: `SKEW`,
 `KURT` (excess), 95% historical VaR and 99% Cornish–Fisher VaR.
 
-### Module 12: fat-tailed distributions and Monte Carlo
+### Module 12: power-law tails
 
-Replace the normal distribution rather than adjusting it. Three routes:
+Written as `content/12-power-law.md`. Charlie's design: take the extreme losses,
+plot them on a log-log chart, fit a straight line, extrapolate. Daily returns,
+because 50 of 5,405 days is the worst 1% (50 of 1,114 weeks would be 4.5%).
+Losses ranked largest first get probability i/n with n = all days; regress
+ln(i/n) on ln(loss), slope = −α. This is exactly Excel's Power trendline on a
+log-log scatter. The slope is independent of n and of decimal-vs-percent units.
+
+Verified on the live data, 13 September 2026, `CAPFIXED_TR` daily:
+
+- k = 50: α = 3.31, R² = 0.985, Hill 3.01 (SE ≈ α/√k ≈ 0.43). Losses 3.29% to
+  11.08% (12 March 2020). 23 of the 50 are in 2008–09, 12 in 2020.
+- α by k: 20 → 3.56, 50 → 3.31, 100 → 3.14, 200 → 3.02, 500 → 2.35, 1,000 → 1.92.
+- Simulated normal returns with the same vol, same recipe: α ≈ 8.2, R² still ≈
+  0.97. R² is not evidence of a power law; α is.
+- Extrapolation (k = 50), actual days / power law / once every: 5% 17 / 14.6 /
+  1.5 yrs (normal: 616 yrs); 7% 4 / 4.8 / 4.5 yrs (normal: 7.8m yrs); 10% 1 /
+  1.5 / 15 yrs; 15% 0 / 0.4 / 56 yrs; 20% 0 / 0.1 / 145 yrs.
+- α ± one SE with the line pinned at the 50th loss: a 20% day once every 78 to
+  368 years.
+- Out of sample, fit 2005–2019 → 2020 on: ≥3% 26 actual vs 20.7; ≥5% 4 vs 4.3;
+  ≥7% 2 vs 1.5; ≥10% 1 vs 0.5.
+- Fit 2005–2007 only (681 days, k = 25): α 2.98, but ≥5% predicted 6.1 against
+  17 actual, because vol went from 13.5% to 18.8%. Slope stable; position moves
+  with volatility.
+- 300 joiner portfolios: α 3.2–3.9 (10th–90th percentile), 95% below 4, none
+  below 2.9 or above 4.6; Hill vs regression median gap 0.17; worst day 9.3% to
+  12.0%, never above 14.2%; years between 20% days median 180 (92–393).
+
+**The fit is a judgement, and the lesson says so** (Charlie's steer): the chart
+wiggles, and the answer depends critically on the cut-off.
+
+- Local α on ten-point stretches of the benchmark, ranks 1–10 to 51–60: 3.17,
+  5.91, 3.29, 2.16, 2.10, 2.37, 5.53. The line and the data disagree by up to a
+  factor of 1.28 in probability.
+- α by cut-off, with the 20% return period: 10 → 3.17 / 139 yrs, 20 → 3.56 / 198,
+  25 → 3.63 / 211, 50 → 3.31 / 145, 100 → 3.14 / 115, 200 → 3.02 / 95, 300 →
+  2.71 / 55. Not monotone: it peaks at k = 24. Over k = 10–200, α runs 3.02–3.63
+  and the 20% day 95–213 years.
+- 300 portfolios: |α(20) − α(200)| > 0.5 in 56%; max/min of the 20%-day answer
+  across k = 20, 50, 100, 200 has median 2.3× and 90th percentile 5.0×; the
+  α range over k = 20–200 has median 0.62.
+
+The lesson has joiners draw a stability plot (α against k, from 10 to 200) and
+report a range. It says plainly that the check's 50 points is a marking
+convention.
+
+Self-checks, on the joiner's own daily portfolio returns: α from the 50 largest
+losses, and years between 20% daily losses read off the fitted line.
+
+### Possible Module 13: fitted distributions and Monte Carlo
+
+The original Module 12 plan, parked when Module 12 became the power-law
+exercise. Replace the normal distribution rather than adjusting it. Three routes
+(the power law is now covered by Module 12):
 
 | Approach | What it fits | Why |
 |---|---|---|
@@ -302,7 +355,7 @@ Python, which makes this a sensible place to end the programme.
 app/
   main.py            FastAPI routes: pages, checks, downloads, sign-in, admin
   config.py          all settings, overridable by environment variable
-  checks.py          self-check engine (27 checks), per-joiner portfolios
+  checks.py          self-check engine (29 checks), per-joiner portfolios
   canary.py          bait paths, the answers.csv shortcut, cadence detection
   content.py         markdown lesson loader
   db.py              SQLite: users, login tokens, attempts, events
