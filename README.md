@@ -157,9 +157,8 @@ The copy review of all eleven modules finished on 13 September 2026, and every
 module had its cartoons by the end of the same day. Work through these roughly in
 order.
 
-1. **Review the Module 11 copy**, drafted 13 September 2026, and give it its
-   fat-tails-against-the-normal cartoon, drawn as a pair with the Module 6 VaR
-   image (see *Illustrations* above).
+1. **Review the Module 11 copy**, drafted and illustrated 13 September 2026, then
+   push it. It is committed but deliberately not yet live.
 
 2. **Module 12: fat-tailed distributions and Monte Carlo.** Spec below.
 

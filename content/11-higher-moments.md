@@ -205,6 +205,14 @@ to two standard deviations out. The 95% point, at 1.645 standard deviations, sit
 in the shoulder. Fewer than 5% of weeks land beyond it, so the real 95% loss is
 closer to zero than the normal one.
 
+<figure class="figure">
+  <img src="/static/img/higher-moments-fat-tails.png" width="1400" height="788" loading="lazy"
+       alt="A cartoon titled Same volatility, fatter tails. A dashed bell curve labelled normal and a solid curve labelled real returns share an axis of weekly returns from losses to gains. The solid curve is taller at the peak, dips below the dashed one on the shoulders either side, and stays above it far out in both tails. The sliver between them in the far left tail is shaded pink and labelled fat tail, and a stick figure on the left peers at it through binoculars, leaning back in alarm.">
+  <figcaption>Hold the volatility fixed and a fat-tailed distribution is taller in
+  the middle and higher far out, so it has to be lower on the shoulders in between.
+  The 95% VaR point sits in that shoulder.</figcaption>
+</figure>
+
 The data agrees. On the Wednesday benchmark, with Module 6's parametric and
 historical VaR at several confidence levels:
 
