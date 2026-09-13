@@ -28,12 +28,56 @@ The roles are reversed compared with Module 7. There, the factor return (the
 market) was observed and beta was estimated. Here the exposure is observed and
 the factor return is estimated.
 
-!!! tip "An advantage over the time-series model"
-    Exposures are observable *now*. A company that listed three months ago has no
-    usable return history, so Module 7 has nothing to say about it, but you know
-    its market cap and industry today, so a cross-sectional model can give it a
-    covariance with everything else immediately. This is one of the main reasons
-    commercial models use this approach.
+## Can you actually observe exposures?
+
+The cross-sectional model has one clear advantage: exposures are observable
+*now*. A company that listed three months ago has no usable return history, so
+the time-series model in Module 7 has nothing to say about it. But you know its
+market cap and its industry today, so a cross-sectional model can give it a
+covariance with everything else straight away. That is a large part of why
+commercial risk models are built this way.
+
+It rests on a big assumption, though: that you can observe a company's exposures
+in the first place. The model takes a description of what each company *is* &mdash;
+its essence, if you like &mdash; and backs the factor returns out of that. If the
+description is wrong, so is everything downstream.
+
+Descriptions go wrong more often than you might expect:
+
+- **When is a car maker actually a finance firm?** A manufacturer with a large
+  lending arm can trade more like a bank than an industrial company when credit
+  markets get nervous.
+- **When is a commodity firm basically USD exposure in disguise?** The FTSE
+  miners and oil majors sell commodities priced in dollars and report in
+  dollars. For a sterling investor, a good part of what looks like commodity
+  exposure is currency exposure.
+- **3i** is classified as Financials, but much of its value is its stake in
+  Action, a European discount retailer.
+- **Melrose** buys industrial businesses, fixes them and sells them, so what it is
+  exposed to changes with every deal, while its classification stays exactly
+  where it was.
+
+A time-series model does not need the description. It regresses returns on a
+factor and lets the data say how exposed each company is, which in effect
+regresses the essence out of the returns. If a car maker's shares move with
+credit spreads, a regression on credit spreads will find that, whatever the
+company calls itself. The price is that it needs a long return history, it is
+slow to notice when a business changes, and it can only find exposure to factors
+you thought to include.
+
+The three models in this programme sit at different points on that line:
+
+| Model | Factors | Exposures | Main assumption |
+|---|---|---|---|
+| Single-factor (Module 7) | chosen in advance | estimated from returns | you picked the right factor |
+| Cross-sectional (this module) | chosen in advance | observed from company data | the company data describes the company |
+| Statistical (Module 9) | estimated from returns | estimated from returns | the structure in past returns will persist |
+
+Opinions differ on which is the right answer, and experienced risk managers land
+on both sides. You will see two places later in this module where the
+cross-sectional assumption fails on our own data: a Financials factor that cannot
+tell banks from insurers, and a single industry label that covers both Burberry
+and Unilever. Keep this section in mind when you get there.
 
 ## Step 1: build the exposures
 

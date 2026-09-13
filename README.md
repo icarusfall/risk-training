@@ -118,7 +118,21 @@ more meaningful, and at a regulated firm employee monitoring deserves the notice
 
 ## Planned
 
-All eleven modules are written. Two more are planned below.
+All eleven modules are written. Planned work below.
+
+**Illustrations throughout.** Do loads of pictures, once the copy review is
+finished. The Module 6 volatility-versus-VaR cartoon set the style: hand-drawn,
+XKCD-like, generated in ChatGPT from a prompt that pins down labels and which
+tail is shaded, saved to `app/static/img/`, compressed with octree quantisation
+(median-cut destroys the pastel accent colour), and embedded as a captioned
+figure. Candidate spots so far:
+
+- Module 1: a price that drops tenfold for one day and bounces straight back.
+- Module 4: cash as a short position in the index.
+- Module 5: the anniversary cliff, as the Covid crash leaves a 52-week window.
+- Module 8: the observed-essence question - is this car maker really a bank?
+- Module 9: PC1 turning out to be the market.
+- Module 11: fat tails against the normal, drawn as a pair with the VaR image.
 
 **Module 11 — higher moments.** Skew, kurtosis, and a lesson in how badly the
 fourth moment behaves. Measured on the `CAPFIXED_TR` benchmark, weekly returns,
