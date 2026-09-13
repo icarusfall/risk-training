@@ -48,9 +48,10 @@ own holdings, renormalised to 100%.
 ## Where does the risk come from?
 
 Here is the question you will be asked most often in this job: *which position is
-driving this?* The naive answer &mdash; "the biggest weight" &mdash; is usually
-wrong, because a large position in a placid utility may matter less than a small
-one in a miner.
+driving this?* The naive answer &mdash; "the biggest weight" &mdash; is often
+wrong, because a large position in a placid utility can matter less than a small
+one in a miner. Though in practice, as you are about to see, the boring answer
+holds up more often than people expect.
 
 We want a decomposition that **adds up**: a per-holding number summing exactly to
 total portfolio risk. Volatility is not additive, so this is not obvious &mdash;
@@ -106,20 +107,36 @@ That single property is why the entire risk industry reports risk this way.
 
 ## The thing to notice
 
-Sort your holdings by weight, then by contribution to risk. The orders will not
-match.
+Sort your holdings by weight, then by contribution to risk, and compare.
 
-You will typically find that a mid-sized holding in a bank or a miner contributes
-far more risk than its weight suggests, while a large consumer staples position
-contributes less. Two reasons compound:
+Honestly, the two lists will usually look quite similar. We built 300 random
+portfolios the same way yours was built and checked:
+
+| | |
+|---|---|
+| Biggest weight is also the biggest contributor | 37% of the time |
+| Biggest contributor is one of the three biggest weights | 77% of the time |
+| Rank correlation between weight and contribution | median 0.80 |
+
+So for total risk, the boring answer is usually close, and the covariance matrix
+mostly confirms what the weights already told you. Anyone who tells you
+otherwise has probably only ever looked at the interesting cases.
+
+Where the covariance matrix earns its keep is the exceptions &mdash; the roughly
+one portfolio in four where the biggest risk is not even a top-three weight.
+When the orders do diverge, it is typically a mid-sized bank or miner
+contributing more than its weight suggests, or a large consumer staples position
+contributing less. Two reasons compound:
 
 1. **Its own volatility** is higher.
 2. **Its correlation with everything else you own** is higher &mdash; and this is
    the part people miss. A stock that is volatile but uncorrelated adds less risk
    than a stock that is moderately volatile and moves with the rest of the book.
 
-That second point is the entire argument for looking at contributions rather than
-weights, and it is worth being able to explain in one sentence at a meeting.
+That second point is why contributions are worth computing even when they mostly
+agree with the weights: the exceptions are precisely the positions that surprise
+people. And the picture shifts a good deal more once you move from total risk to
+active risk, which is where this module ends up.
 
 !!! warning "Contributions can be negative"
     If a holding is negatively correlated with the rest of the portfolio, its CTR
