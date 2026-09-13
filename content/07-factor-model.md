@@ -6,7 +6,7 @@ summary: Regress every stock on the market, and rebuild the covariance matrix fr
 time: 90 min
 ---
 
-Remember the uncomfortable number from Module 3: **3,321 parameters from 1,115
+Remember the uncomfortable number from Module 3: **3,321 parameters from 1,114
 observations**. This module is the first way out.
 
 ## The idea
@@ -43,10 +43,10 @@ Compute weekly market returns the same Wednesday-to-Wednesday way.
 !!! excel "The easy way"
     For each stock you need the slope, the residual volatility and R&sup2;:
     ```
-    beta       =SLOPE(ReturnsW!B2:B1116, Mkt!B2:B1116)
-    alpha      =INTERCEPT(ReturnsW!B2:B1116, Mkt!B2:B1116)
-    r-squared  =RSQ(ReturnsW!B2:B1116, Mkt!B2:B1116)
-    resid vol  =STEYX(ReturnsW!B2:B1116, Mkt!B2:B1116)
+    beta       =SLOPE(ReturnsW!B2:B1115, Mkt!B2:B1115)
+    alpha      =INTERCEPT(ReturnsW!B2:B1115, Mkt!B2:B1115)
+    r-squared  =RSQ(ReturnsW!B2:B1115, Mkt!B2:B1115)
+    resid vol  =STEYX(ReturnsW!B2:B1115, Mkt!B2:B1115)
     ```
     `STEYX` is the standard error of the regression &mdash; exactly the residual
     volatility you want, already using the right n&minus;2 denominator.

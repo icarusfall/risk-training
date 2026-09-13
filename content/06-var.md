@@ -36,7 +36,7 @@ anyway), this collapses to 2.326 &times; the weekly volatility.
 Make no distributional assumption. Use the portfolio's own history.
 
 1. Compute your portfolio's realised return for every week:
-   `=MMULT(ReturnsW!B2:M1116, weights)` &mdash; one number per week.
+   `=MMULT(ReturnsW!B2:M1115, weights)` &mdash; one number per week.
 2. Take the 1st percentile of that series.
 
 !!! excel "One cell again"
@@ -81,7 +81,7 @@ which is absurd for a risk measure. ES does not have that defect.
 A VaR number is a **prediction**, and predictions can be scored. This is the part
 most people skip and it is the part that matters.
 
-At 99% over 1,115 weeks you expect about **11 exceptions**. Count your actual
+At 99% over 1,114 weeks you expect about **11 exceptions**. Count your actual
 ones:
 
 ```

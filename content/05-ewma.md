@@ -29,7 +29,7 @@ about your portfolio changed. Only the window did.
     `OFFSET` is volatile (it recalculates constantly). `INDEX` is faster if the
     sheet gets heavy:
     ```
-    =Dev!$B$2:$CC$1116 INDEX(...)
+    =Dev!$B$2:$CC$1115 INDEX(...)
     ```
     Either is fine. Whatever you find readable.
 
@@ -101,7 +101,7 @@ So the recipe is:
     ```
     And the matrix:
     ```
-    =MMULT(TRANSPOSE(DevW!B2:CC1116), DevW!B2:CC1116)
+    =MMULT(TRANSPOSE(DevW!B2:CD1115), DevW!B2:CD1115)
     ```
     One cell changes &lambda; and the entire risk model updates. That is worth
     the setup.

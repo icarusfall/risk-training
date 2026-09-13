@@ -50,18 +50,77 @@ stock's variance.
 With 81 names that is 6,561 cells, or 3,321 genuinely distinct numbers. You are
 not going to type 3,321 formulas.
 
-## The wrong way, and why we mention it
+## The quick way: a grid of `COVARIANCE.S`
 
-You *could* write `=COVARIANCE.S(ReturnsW!B:B, ReturnsW!C:C)` and fill it across
-a grid. It works. People do it. It is 4,950 formulas for 100 names, it recalculates
-slowly, and &mdash; more importantly &mdash; it teaches you nothing about what a
-covariance matrix *is*.
+Lay your tickers down column A and across row 1 of a `Cov` sheet, then fill the
+grid with one covariance per pair. Every cell asks the same question &mdash;
+*what is the covariance between this row's stock and this column's stock?*
 
-If you want to do it this way, go ahead. The self-check does not care. But do read
-the next section, because everything from Module 5 onward assumes you have the
-matrix form in your head.
+It is 6,561 cells for 81 names, it recalculates more slowly than the matrix
+version, and it works perfectly well. It earns exactly the same marks.
 
-## The right way: it is one matrix multiplication
+The art is in getting each cell to point at the right two columns of returns
+without typing 6,561 different ranges. There are a few ways, and the team is
+split on which is best:
+
+!!! excel "Pointing each cell at the right columns"
+    Assume weekly returns in `ReturnsW!B2:CD1115` (1,114 weeks, 81 stocks),
+    tickers in `ReturnsW!B1:CD1`, and your `Cov` grid starting at `B2` with the
+    same tickers, in the same order, down column A and across row 1.
+
+    **`OFFSET`**, walking across by the row and column number of the cell you are
+    in:
+    ```
+    =COVARIANCE.S(OFFSET(ReturnsW!$A$2, 0, ROW()-1, 1114, 1),
+                  OFFSET(ReturnsW!$A$2, 0, COLUMN()-1, 1114, 1))
+    ```
+
+    **`INDIRECT`**, building each range as a text address. The most transparent
+    about what it is doing, and the most tedious to type:
+    ```
+    =COVARIANCE.S(INDIRECT("ReturnsW!" & ADDRESS(2, ROW(), 4) & ":" & ADDRESS(1115, ROW(), 4)),
+                  INDIRECT("ReturnsW!" & ADDRESS(2, COLUMN(), 4) & ":" & ADDRESS(1115, COLUMN(), 4)))
+    ```
+
+    **`INDEX` with `MATCH`**, looking each column up by ticker. An `INDEX` row
+    argument of `0` returns the whole column:
+    ```
+    =COVARIANCE.S(INDEX(ReturnsW!$B$2:$CD$1115, 0, MATCH($A2, ReturnsW!$B$1:$CD$1, 0)),
+                  INDEX(ReturnsW!$B$2:$CD$1115, 0, MATCH(B$1, ReturnsW!$B$1:$CD$1, 0)))
+    ```
+    This one has the virtue of matching on the ticker *name* rather than on
+    position, so it survives someone re-sorting the columns.
+
+    Write one cell, drag across and down, done.
+
+!!! warning "OFFSET and INDIRECT are volatile"
+    Both recalculate every time *anything* in the workbook changes, not just when
+    their inputs do. Across 6,561 cells that is noticeable. It is not wrong &mdash;
+    just switch calculation to manual (**Formulas &rarr; Calculation Options**)
+    and press F9 when you want fresh numbers. `INDEX` is not volatile.
+
+!!! tip "COVAR is not COVARIANCE.S"
+    If you reach for the old `COVAR` function, know that it is the **population**
+    covariance, dividing by *n* rather than *n*&minus;1 &mdash; the same as
+    `COVARIANCE.P`.
+
+    Note the contrast with `STDEV` in Module 2, which quietly defaults to the
+    *sample* version. Excel's legacy functions are not even consistent with each
+    other about which one they mean.
+
+    With 1,114 weekly observations the difference is a factor of 1114/1113 on
+    the variance, about 0.045% on the volatility. That is comfortably inside the
+    checker's tolerance, so `COVAR` still gets full marks. But it is worth knowing
+    which one you are using, and why the diagonal of your grid will be a hair
+    below the `VAR.S` of each column.
+
+## The pure way: seeing the guts of the calculation
+
+The quick way gets the numbers. This way shows you what the numbers *are*, and
+it is worth doing at least once even if you build your real model the quick way
+&mdash; Module 5's exponential weighting and Module 9's principal components are
+far easier to understand, and much easier to build, once you see a covariance
+matrix as a single piece of matrix algebra.
 
 Take your weekly returns as a matrix **R** with T rows (dates) and N columns
 (stocks). Subtract each column's mean, so every column is centred on zero. Then:
@@ -72,37 +131,44 @@ That is the entire thing. One transpose, one matrix multiply, one division.
 
 Why it works: the (i,j) entry of R&prime;R is the sum over all dates of
 r<sub>i,t</sub> &times; r<sub>j,t</sub>. Since the columns are demeaned, that sum
-divided by T&minus;1 is exactly the sample covariance. The matrix product computes
-all 3,321 of them simultaneously, because that is what matrix multiplication is.
+divided by T&minus;1 is exactly the sample covariance &mdash; the same number
+`COVARIANCE.S` gives you for that pair. The matrix product computes all 3,321 of
+them simultaneously, because that is what matrix multiplication is.
 
 !!! excel "Doing it in Excel"
-    Say your weekly returns are in `ReturnsW!B2:CC1116` (T=1115 rows, N=80 cols).
+    With weekly returns in `ReturnsW!B2:CD1115` (T = 1,114 rows, N = 81 columns):
 
-    **Step 1 &mdash; demean.** On a new sheet `Dev`, cell `B2`:
+    **Step 1 &mdash; demean.** Put each column's mean in row 1 of a new `Dev`
+    sheet, above where its demeaned returns will go:
     ```
-    =ReturnsW!B2:CC1116 - AVERAGE(ReturnsW!B2:B1116)
+    =AVERAGE(ReturnsW!B2:B1115)
     ```
-    That will not broadcast correctly. Do it column-wise instead &mdash; in `B2`:
+    then in `Dev!B2`, and dragged across and down:
     ```
     =ReturnsW!B2 - B$1
     ```
-    with row 1 holding `=AVERAGE(ReturnsW!B2:B1116)` for each column. Drag across
-    and down. Unglamorous, reliable.
+    Unglamorous and reliable. On a 365 build you can do the whole block in one
+    spilled formula instead:
+    ```
+    =ReturnsW!B2:CD1115 - BYCOL(ReturnsW!B2:CD1115, LAMBDA(c, AVERAGE(c)))
+    ```
 
     **Step 2 &mdash; the matrix.** On a `Cov` sheet, in one cell:
     ```
-    =MMULT(TRANSPOSE(Dev!B2:CC1116), Dev!B2:CC1116) / (COUNT(Dev!B2:B1116)-1)
+    =MMULT(TRANSPOSE(Dev!B2:CD1115), Dev!B2:CD1115) / (COUNT(Dev!B2:B1115) - 1)
     ```
-    On Microsoft 365 this spills into an 80&times;80 block automatically. Label the
+    On Microsoft 365 this spills into an 81&times;81 block automatically. Label the
     rows and columns with your tickers &mdash; you will regret it if you do not.
 
+    If you built the quick way as well, subtract one grid from the other. Every
+    cell should be zero, or within floating-point noise of it.
+
 !!! warning "Performance"
-    That multiply is 1115 &times; 80 &times; 80 &asymp; 7 million operations, and
-    Excel redoes it on every recalculation. It is fine, but if the sheet becomes
-    sluggish, switch to **Formulas &rarr; Calculation Options &rarr; Manual** and
-    press F9 when you want it. This is also why we suggest weekly rather than
-    daily returns for the full-universe matrix: daily would be five times the work
-    for a noisier answer.
+    That multiply is 1,114 &times; 81 &times; 81 &asymp; 7.3 million operations,
+    and Excel redoes it on every recalculation. It is fine, but if the sheet
+    becomes sluggish, switch to manual calculation and press F9 when you want it.
+    This is also why we suggest weekly rather than daily returns for the
+    full-universe matrix: daily would be five times the work for a noisier answer.
 
 ## Sanity checks before you go further
 
@@ -161,7 +227,7 @@ stock's own volatility back. If you do not, your alignment is wrong.
 
 ## A number to consider
 
-You estimated 3,321 parameters from 1,115 observations. Three times as many
+You estimated 3,321 parameters from 1,114 observations. Three times as many
 unknowns as data points.
 
 The matrix still *works* &mdash; it is positive semi-definite by construction,
