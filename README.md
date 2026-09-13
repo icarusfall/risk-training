@@ -49,6 +49,24 @@ uncleaned, for Module 1. `core` (2005 onwards, 81 names, cleaned and trimmed to
 a rectangle) is the default and what every answer is computed from. `long`
 (1995 onwards, 57 names) trades breadth for history.
 
+### Illustrations
+
+Every module has at least one hand-drawn, XKCD-style cartoon, in
+`app/static/img/`. To add one:
+
+- Draft a precise prompt. Spell out every label word for word, which side
+  anything is shaded, and the single accent colour (site pink `#E9B8BC`), and
+  forbid any other text.
+- Generate it in ChatGPT and save it to `app/static/img/`.
+- Check the labels are spelled right and the picture makes its point. Image
+  models get counts and proportions only roughly right; that is accepted as part
+  of the hand-drawn look.
+- Compress: resize to 1400px wide and quantise with Pillow's `FASTOCTREE` at 128
+  colours (35–100KB). Median-cut removes the pastel accent entirely, so count
+  accent pixels before and after.
+- Embed as a `<figure class="figure">` with full alt text and a caption, and add
+  the name to the image list in the smoke test.
+
 ### The data is dirty, deliberately and otherwise
 
 Several real problems were found building this, and they are used as teaching
@@ -134,36 +152,17 @@ more meaningful, and at a regulated firm employee monitoring deserves the notice
 
 ## To do
 
-The copy review of all eleven modules finished on 13 September 2026. Work through
-these roughly in order.
+The copy review of all eleven modules finished on 13 September 2026, and every
+module had its cartoons by the end of the same day. Work through these roughly in
+order.
 
-1. **Illustrations throughout.** Charlie's request: "do loads of pictures". The
-   Module 6 volatility-versus-VaR cartoon sets the style and the workflow:
-   - Draft a precise prompt for a hand-drawn, XKCD-style image. Pin down the exact
-     label wording, which side anything is shaded, and a single accent colour
-     (site pink `#E9B8BC`).
-   - Charlie generates it in ChatGPT and saves it to `app/static/img/`.
-   - Check the drawing is mathematically right and every label is spelled
-     correctly.
-   - Compress: resize to 1400px wide and quantise with Pillow's octree method at
-     128 colours (about 50KB). Median-cut quantisation removes the pastel accent
-     entirely, so count accent pixels before and after.
-   - Embed as a `<figure class="figure">` with full alt text and a caption, and add
-     the path to `PAGES` in the smoke test.
+1. **Module 11: higher moments.** Spec below. It wants a fat-tails-against-the-normal
+   cartoon, drawn as a pair with the Module 6 VaR image (see *Illustrations*
+   above).
 
-   Candidate spots:
-   - Module 1: a price that drops tenfold for one day and bounces straight back.
-   - Module 4: cash as a short position in the index.
-   - Module 5: the anniversary cliff, as the Covid crash leaves a 52-week window.
-   - Module 8: the observed-exposure question. Is this car maker really a bank?
-   - Module 9: PC1 turning out to be the market.
-   - Module 11: fat tails against the normal, drawn as a pair with the VaR image.
+2. **Module 12: fat-tailed distributions and Monte Carlo.** Spec below.
 
-2. **Module 11: higher moments.** Spec below.
-
-3. **Module 12: fat-tailed distributions and Monte Carlo.** Spec below.
-
-4. **Email joiners directly once a sending domain is verified in Resend.** Set
+3. **Email joiners directly once a sending domain is verified in Resend.** Set
    `MAIL_FROM` to an address on the domain and `LOGIN_LINK_RECIPIENT=user` in
    Railway. Until then the sign-in form emails links to `ADMIN_EMAIL` to forward.
 

@@ -79,6 +79,14 @@ nothing to do with the FTSE 100, and so do the banks. The model cannot see that,
 so it **understates** risk for a portfolio concentrated in one sector and is
 roughly right for a well-spread one.
 
+<figure class="figure">
+  <img src="/static/img/factor-model-dog-walk.png" width="1400" height="788" loading="lazy"
+       alt="A cartoon titled Every stock on the market's lead. A stick figure labelled the market walks five dogs. Two labelled bank bound far ahead on long taut leads, one labelled utility plods behind on a short slack lead, and two labelled miner trot side by side, tied to each other by a pink rope the walker has not noticed.">
+  <figcaption>The single-factor model sees each stock's lead to the market and
+  nothing else. The miners are also tied to each other, and the model cannot
+  see that.</figcaption>
+</figure>
+
 Test it. Build equally-weighted portfolios of five banks, five miners, five
 utilities, and then five names from five different industries. Compare the
 single-factor prediction against what each actually realised:

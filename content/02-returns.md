@@ -80,6 +80,13 @@ bank holidays. A Friday-to-Friday week is regularly only four trading days long,
 which adds a seasonal error to your variance. Wednesday is the day least affected
 by UK holidays.
 
+<figure class="figure">
+  <img src="/static/img/returns-wednesday.png" width="1400" height="788" loading="lazy"
+       alt="A cartoon bar chart titled Weekly samples that landed on a closed market. Monday 106, Friday 32, Wednesday 10, with the Wednesday bar shaded pink. A stick figure lounges in a deckchair on top of the Monday bar beside a bank holiday sign; another sits at a laptop next to the Wednesday bar giving a thumbs up.">
+  <figcaption>How often each choice of weekday landed on a day the London Stock
+  Exchange was shut, across this dataset.</figcaption>
+</figure>
+
 !!! excel "Getting Wednesdays"
     **Route one: filter the rows you have.** Add a helper column next to your
     dates:

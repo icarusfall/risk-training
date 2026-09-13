@@ -121,6 +121,13 @@ model is calibrated, LR follows &chi;&sup2; with one degree of freedom. Reject a
     that mattered most. The Christoffersen test adds a clustering check, and in
     practice clustering is often the more serious problem.
 
+<figure class="figure">
+  <img src="/static/img/var-breaks-cluster.png" width="1400" height="788" loading="lazy"
+       alt="Two cartoon panels, each with a timeline from 2005 to 2026. Left, titled 11 breaks, spread out: pink crosses evenly spaced along the whole line, and a relaxed stick figure sipping tea. Right, titled 11 breaks, all at once: the pink crosses crammed together at Oct 2008, and a stick figure flailing as papers fly.">
+  <figcaption>Kupiec counts the breaks, so it rates these two models the same. The
+  one on the right failed in the one month that mattered.</figcaption>
+</figure>
+
 ### In practice: the UCITS rule of thumb
 
 Regular backtesting of VaR breaks is a regulatory requirement for UCITS funds in

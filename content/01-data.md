@@ -71,6 +71,13 @@ Technology Trust, over four consecutive rows of the file:
 | **2011-04-29** | **37.35** |
 | 2011-05-03 | 377.30 |
 
+<figure class="figure">
+  <img src="/static/img/data-bad-print.png" width="1400" height="788" loading="lazy"
+       alt="Two cartoon price charts. Left, titled Bad print: it bounces straight back. A flat price line plunges for a single point from 373.50 to 37.35 and returns straight to 377.30; a stick figure with a giant pencil is about to redraw the dip. Right, titled Real crash: it stays down. The line falls steeply and stays low, and a stick figure clutches its head.">
+  <figcaption>The test is whether it reverts. A tenfold drop that comes straight back
+  the next day is a data error. A fall that stays down is news.</figcaption>
+</figure>
+
 The price falls by a factor of ten for one day and then recovers. As a return
 series that is &minus;90% followed by +910%. In a covariance matrix that gives
 the stock an annualised volatility of about 285%, and because it is so volatile

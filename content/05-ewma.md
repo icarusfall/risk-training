@@ -177,6 +177,14 @@ You should see:
 
 EWMA avoids this, because old observations fade gradually instead of falling off a ledge. That is one of the main reasons to use it.
 
+<figure class="figure">
+  <img src="/static/img/ewma-anniversary-cliff.png" width="1400" height="788" loading="lazy"
+       alt="Two cartoon panels, each showing weekly returns as spikes along a timeline from past to now, with a cluster of very tall spikes near the start labelled Covid crash. Left, titled Rolling window: falls off a cliff. A flat pink block labelled 52-week window starts just after the Covid spikes, leaving them outside; one stick figure asks Why did our risk just fall? and another answers Because of a date. Right, titled EWMA: fades away gradually. A pink curve labelled EWMA weight rises smoothly from almost nothing over the Covid spikes to its peak at now.">
+  <figcaption>A rolling window gives every week inside it full weight and every week
+  outside it none, so a crisis leaves all at once. EWMA's weights shrink smoothly,
+  so the same crisis fades out over time.</figcaption>
+</figure>
+
 ## What to take away
 
 1. Always state the window when you quote a volatility.

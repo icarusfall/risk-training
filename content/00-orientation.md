@@ -58,6 +58,13 @@ People mix these up often, so it is worth being clear about them from the start.
 | **Ex-post** (realised) | What *did* happen? | Standard deviation of the returns your portfolio actually delivered |
 | **Ex-ante** (predicted) | What *might* happen? | <code>&radic;(w&prime;&Sigma;w)</code>, using today's weights |
 
+<figure class="figure">
+  <img src="/static/img/orientation-windscreen.png" width="1400" height="788" loading="lazy"
+       alt="A stick figure driving a car, seen from the back seat. Through the windscreen a winding road disappears into pink fog, labelled ex-ante: what might happen. The rear-view mirror shows a clear straight road behind, labelled ex-post: what did happen.">
+  <figcaption>Ex-post risk is the view in the mirror: the road you have already
+  driven. Ex-ante risk is the fog ahead, judged from the car you are in today.</figcaption>
+</figure>
+
 They differ because ex-post risk uses the weights you *had*, which changed every
 day, while ex-ante risk uses the weights you have *now*, held fixed. A manager who
 de-risked in February 2020 has a poor ex-post number for that year and may have

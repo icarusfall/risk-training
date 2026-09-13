@@ -212,6 +212,13 @@ active bet; the cash is the only active decision.
 r<sub>cash</sub> &minus; r<sub>b</sub> = &minus;r<sub>b</sub>, which is as
 volatile as the index itself.
 
+<figure class="figure">
+  <img src="/static/img/tracking-error-cash-seesaw.png" width="1400" height="788" loading="lazy"
+       alt="Two cartoon panels. Left, titled On its own: cash is riskless. A stick figure lounges on a pile of banknotes labelled cash, next to the words 0% volatility. Right, titled Against the index: cash is a short position. A seesaw with a box labelled the index on the raised end, marked up, and the pink pile of cash on the lowered end, marked down, with the startled stick figure clinging on.">
+  <figcaption>Cash does not move, but the index does. Measured against the index,
+  cash moves by exactly as much in the opposite direction.</figcaption>
+</figure>
+
 The plain covariance matrix does not show this, because it describes **absolute**
 returns, and in absolute terms cash really is riskless. A zero row in &Sigma;
 forces a zero contribution no matter how large the active weight against it. The

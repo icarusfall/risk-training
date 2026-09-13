@@ -116,6 +116,13 @@ and it still produced something very close to the market. The market is the
 largest single source of common variation in the data, so methods like this one
 find it.
 
+<figure class="figure">
+  <img src="/static/img/pca-machine.png" width="1400" height="788" loading="lazy"
+       alt="A cartoon of a home-made machine full of gears. A stick figure on a stepladder tips a grid labelled covariance matrix into the funnel on top. A long pink banner reading PC1 = THE MARKET unrolls from a chute on the side, held by a second stick figure who says Nobody told it that.">
+  <figcaption>The algorithm sees only the covariance matrix, with no index and no
+  company names. Its first component still correlates about 0.99 with the market.</figcaption>
+</figure>
+
 Look at the size of the loadings, too:
 
 - **Largest:** Barclays, NatWest, Barratt, Lloyds &mdash; banks and a housebuilder.

@@ -57,6 +57,13 @@ Descriptions go wrong more often than you might expect:
   exposed to changes with every deal, while its classification stays exactly
   where it was.
 
+<figure class="figure">
+  <img src="/static/img/cross-sectional-car-shadow.png" width="1400" height="788" loading="lazy"
+       alt="A cartoon titled Is this car maker really a bank? A stick figure with a clipboard reading Automobiles, ticked, looks at a small car. The low sun casts the car's long pink shadow across the ground, and the shadow is the shape of a classical bank building with the word BANK on it.">
+  <figcaption>The classification records what a company makes. Its share price
+  follows what it is exposed to, and the two can be quite different.</figcaption>
+</figure>
+
 A time-series model does not need the description. It regresses returns on a
 factor and lets the data say how exposed each company is, which in effect
 regresses the essence out of the returns. If a car maker's shares move with
@@ -322,6 +329,13 @@ all of them miners, so the factor is more specific.
 
     When a vendor describes a model with many industry factors, it is worth asking
     how the classification was decided, as well as how many factors there are.
+
+<figure class="figure">
+  <img src="/static/img/cross-sectional-personal-goods.png" width="1400" height="788" loading="lazy"
+       alt="A cartoon of an open cardboard box labelled Personal Goods. A puzzled stick figure holds up an elegant trench coat with a pink price tag reading £2,000 in one hand and a plain bottle of bleach in the other.">
+  <figcaption>One label, two very different businesses. The trench coat and the
+  bleach share a factor, and that factor has to average across both.</figcaption>
+</figure>
 
 A factor model depends heavily on how its factors are defined, and that is the
 main point of this module.

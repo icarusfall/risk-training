@@ -30,8 +30,12 @@ from app import checks, config, db  # noqa: E402
 from app.main import app  # noqa: E402
 
 PAGES = ["/", "/data", "/data?dataset=long", "/login", "/robots.txt",
-         "/llms.txt", "/healthz", "/favicon.ico", "/static/img/var-tail.png",
-         "/login?sent=1"]
+         "/llms.txt", "/healthz", "/favicon.ico", "/login?sent=1"]
+PAGES += [f"/static/img/{name}.png" for name in [
+    "var-tail", "orientation-windscreen", "data-bad-print", "returns-wednesday",
+    "covariance-squeeze", "tracking-error-cash-seesaw", "ewma-anniversary-cliff",
+    "var-breaks-cluster", "factor-model-dog-walk", "cross-sectional-car-shadow",
+    "cross-sectional-personal-goods", "pca-machine", "bake-off-sharpshooter"]]
 MODULES = ["orientation", "data", "returns", "covariance", "tracking-error",
            "ewma", "var", "factor-model", "cross-sectional", "pca", "bake-off"]
 DOWNLOADS = ["prices", "benchmarks", "universe", "quality", "workbook"]

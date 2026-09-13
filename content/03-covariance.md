@@ -201,6 +201,13 @@ Now the payoff. With a weight vector **w**:
 
 <div class="formula">&sigma;<sub>p</sub><sup>2</sup> = w&prime;&Sigma;w &nbsp;&nbsp;&nbsp; &sigma;<sub>p</sub> = &radic;(w&prime;&Sigma;w) &times; &radic;52</div>
 
+<figure class="figure">
+  <img src="/static/img/covariance-squeeze.png" width="1400" height="788" loading="lazy"
+       alt="A cartoon titled Squeeze the matrix with the weights. A row vector labelled w prime, a square grid labelled Sigma and a column vector labelled w sit clamped in a bench vice. A stick figure heaves on the handle, and a single small pink square labelled portfolio variance has dropped out underneath.">
+  <figcaption>Multiply by the weights once across and once down, and the whole
+  covariance matrix squashes into a single number: the portfolio's variance.</figcaption>
+</figure>
+
 !!! excel "The front tab"
     Build a sheet with your tickers down column A and your weights in column B.
     Then, in a single cell:

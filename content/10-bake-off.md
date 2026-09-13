@@ -38,6 +38,13 @@ Many flawed backtests make a version of this mistake. A useful question to ask
 of any backtest is: **what data did the model see before it made this
 prediction?**
 
+<figure class="figure">
+  <img src="/static/img/bake-off-sharpshooter.png" width="1400" height="788" loading="lazy"
+       alt="Two cartoon panels. Left, titled 1. Throw the darts: a stick figure throws darts at a blank barn wall, where they land in a loose cluster. Right, titled 2. Draw the target: the darts are in the same places, and the stick figure has painted pink target rings around them, arms raised, saying Bang on!">
+  <figcaption>An in-sample backtest paints the target after the darts have landed,
+  so of course it scores well.</figcaption>
+</figure>
+
 ## The bias statistic
 
 The bias statistic is a fairer test.
