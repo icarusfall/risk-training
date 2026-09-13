@@ -18,20 +18,32 @@ The numbers will differ substantially &mdash; often by a factor of two. Nothing
 about your portfolio changed. Only the window did.
 
 !!! excel "Rolling windows"
-    Rather than rebuilding the whole covariance matrix, put the window length in
-    a cell (say `Ctrl!B1 = 260`) and use `OFFSET` to pick the last N rows:
+    Put the window length in one cell, say `Ctrl!B1 = 260`, and the number of
+    weekly observations in another:
     ```
-    =OFFSET(Dev!$B$2, COUNT(Dev!$B:$B)-Ctrl!$B$1, 0, Ctrl!$B$1, 80)
+    Ctrl!B3   =COUNT(ReturnsW!B2:B1115)
     ```
-    Feed that into the same `MMULT(TRANSPOSE(...), ...)`. Now typing a new window
-    length recalculates everything, and you can watch the answer move.
+    which is 1,114. Then pick out the last N rows of your demeaned block with
+    `OFFSET`:
+    ```
+    =OFFSET(Dev!$B$2, Ctrl!$B$3 - Ctrl!$B$1, 0, Ctrl!$B$1, 81)
+    ```
+    Feed that into the same `MMULT(TRANSPOSE(...), ...)` as Module 3, dividing by
+    `Ctrl!B1 - 1` rather than the full count. Now typing a new window length
+    recalculates everything, and you can watch the answer move.
 
-    `OFFSET` is volatile (it recalculates constantly). `INDEX` is faster if the
-    sheet gets heavy:
+    Count the data rows only. If your `Dev` sheet keeps the column means in row 1,
+    as Module 3 suggests, then `COUNT(Dev!B:B)` picks those up too and every
+    window quietly ends one row past the end of your data.
+
+    `OFFSET` is volatile. The non-volatile equivalent glues two `INDEX` calls
+    together into a range:
     ```
-    =Dev!$B$2:$CC$1115 INDEX(...)
+    =INDEX(Dev!$B$2:$CD$1115, Ctrl!$B$3 - Ctrl!$B$1 + 1, 0):INDEX(Dev!$B$2:$CD$1115, Ctrl!$B$3, 0)
     ```
-    Either is fine. Whatever you find readable.
+    Strictly, a window should be demeaned using the mean of that window rather
+    than of the whole sample. Over 260 weeks the difference is small enough to
+    ignore while you are exploring.
 
 ### The trade-off
 
@@ -86,22 +98,26 @@ So the recipe is:
 1. Build a column of weights, oldest row first:
    `=(1-lambda) * lambda^(n - ROW() + 1)`
 2. Normalise so they sum to 1: divide by their total.
-3. Multiply each row of your demeaned returns by the **square root** of its weight.
+3. Multiply each row of your returns by the **square root** of its weight. Use
+   the raw weekly returns, not the demeaned ones from Module 3 &mdash; see the
+   convention note below.
 4. Run the **same** `MMULT(TRANSPOSE(Rw), Rw)` as Module 3 &mdash; with no
    division by T&minus;1, because the weights already sum to one.
 
 !!! excel "In practice"
     Weight column, with `lambda` in `Ctrl!B2` and T rows of data:
     ```
-    =(1-Ctrl!$B$2) * Ctrl!$B$2^($T$1-ROW()+ROW($A$2)-1)
+    =(1-Ctrl!$B$2) * Ctrl!$B$2^(Ctrl!$B$3 - (ROW()-1))
     ```
-    then normalise. Scaled returns on a `DevW` sheet:
+    where `Ctrl!B3` is the count of weekly observations, so the most recent
+    row gets an exponent of zero. Then normalise. Scaled returns on a `ScaledW`
+    sheet, with the weights in its column A:
     ```
-    =Dev!B2 * SQRT($A2)
+    =ReturnsW!B2 * SQRT($A2)
     ```
     And the matrix:
     ```
-    =MMULT(TRANSPOSE(DevW!B2:CD1115), DevW!B2:CD1115)
+    =MMULT(TRANSPOSE(ScaledW!B2:CD1115), ScaledW!B2:CD1115)
     ```
     One cell changes &lambda; and the entire risk model updates. That is worth
     the setup.
@@ -110,8 +126,10 @@ So the recipe is:
     RiskMetrics does **not** demean returns before computing EWMA covariance: it
     assumes the mean is zero. At daily and weekly frequency the mean is tiny
     relative to the volatility, and not estimating it removes a source of noise.
-    Our answer key follows that convention, so if your EWMA numbers are slightly
-    off, check whether you demeaned.
+    Our answer key follows that convention, which is why the recipe above uses
+    raw returns. On this data demeaning first moves the answer by up to about
+    1.3% &mdash; inside the checker tolerance, but closer to the edge than you
+    want, so if an EWMA check is refusing you, that is the first thing to look at.
 
 ## The exercise that makes the point
 
