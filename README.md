@@ -158,8 +158,11 @@ The copy review of all eleven modules finished on 13 September 2026, and every
 module had its cartoons by the end of the same day. Work through these roughly in
 order.
 
-1. **Review the Module 12 copy**, drafted 13 September 2026, give it a cartoon,
-   then push. It is committed but deliberately not yet live.
+Charlie's view, 13 September 2026: with Module 12 the syllabus is essentially
+complete. What follows is optional.
+
+1. **Module 13: Monte Carlo, fat-tailed distributions and copulas**, including
+   rank correlation. Spec below.
 
 2. **Email joiners directly once a sending domain is verified in Resend.** Set
    `MAIL_FROM` to an address on the domain and `LOGIN_LINK_RECIPIENT=user` in
@@ -171,9 +174,11 @@ figure computed on the live data before it goes in.
 
 ### Parked
 
-- **A Python track.** Excel is deliberate for now. A Module 13 on fitted
-  distributions and Monte Carlo (spec below) is the natural place to point
-  towards Python.
+- **A Python track.** Excel is deliberate for now. Module 13 (Monte Carlo and
+  copulas) is the natural place to point towards Python.
+- **Time-series models: ARMA, ARCH, GARCH.** Charlie's ideas for optional further
+  modules. GARCH would follow naturally from Module 5's EWMA, which is a GARCH(1,1)
+  with no mean reversion.
 - **A real value factor**, if a point-in-time fundamentals source becomes
   available. It would plug into `build_exposures` in `app/reference/advanced.py`.
 - **Sharing with other teams.** Needs the sending domain above.

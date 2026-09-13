@@ -36,7 +36,7 @@ PAGES += [f"/static/img/{name}.png" for name in [
     "covariance-squeeze", "tracking-error-cash-seesaw", "ewma-anniversary-cliff",
     "var-breaks-cluster", "factor-model-dog-walk", "cross-sectional-car-shadow",
     "cross-sectional-personal-goods", "pca-machine", "bake-off-sharpshooter",
-    "higher-moments-fat-tails"]]
+    "higher-moments-fat-tails", "power-law-ruler"]]
 MODULES = ["orientation", "data", "returns", "covariance", "tracking-error",
            "ewma", "var", "factor-model", "cross-sectional", "pca", "bake-off",
            "higher-moments", "power-law"]

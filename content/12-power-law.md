@@ -235,6 +235,13 @@ benchmark had seventeen of them.
 The bottom two rows are pure extrapolation. The worst day in the sample was 11%,
 and the line is being asked about 15% and 20%.
 
+<figure class="figure">
+  <img src="/static/img/power-law-ruler.png" width="1400" height="788" loading="lazy"
+       alt="A cartoon titled Extending the line. On a chart with log scales for size of loss and how often, wobbly dots run down from the top left roughly along a straight line. A stick figure on a stepladder holds a long ruler against the last of the dots and extends the line as a dashed line into the empty right-hand side of the chart, where a pale pink wedge fans out around it, widening towards the edge, labelled how sure are we? A second stick figure on the left points towards it.">
+  <figcaption>Past the last data point the line keeps going with the same confidence,
+  but the range of lines the data would support keeps getting wider.</figcaption>
+</figure>
+
 ## How far should you trust it?
 
 ### The error bars grow as you extend it
