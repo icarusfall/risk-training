@@ -12,6 +12,13 @@ bad is a bad week?**
 > VaR at 99% over one week is the loss that should be exceeded in only 1 week in
 > 100.
 
+<figure class="figure">
+  <img src="/static/img/var-tail.png" width="1400" height="788" loading="lazy"
+       alt="Two cartoon panels. Left, titled Volatility: how wide is it? A bell curve of weekly returns with a stick figure measuring its width with a tape measure. Right, titled VaR: how bad is the bad end? The same curve with a dashed line far out on the losses side marked 99% VaR, the small shaded tail beyond it labelled worst 1% of weeks, and a worried stick figure peering at it through binoculars.">
+  <figcaption>Volatility measures how spread out the whole distribution is. VaR only
+  cares about one point far out in the loss tail.</figcaption>
+</figure>
+
 ## Parametric VaR
 
 Assume returns are normal. Then the 99th percentile is 2.326 standard deviations

@@ -30,7 +30,7 @@ from app import checks, config, db  # noqa: E402
 from app.main import app  # noqa: E402
 
 PAGES = ["/", "/data", "/data?dataset=long", "/login", "/robots.txt",
-         "/llms.txt", "/healthz", "/favicon.ico"]
+         "/llms.txt", "/healthz", "/favicon.ico", "/static/img/var-tail.png"]
 MODULES = ["orientation", "data", "returns", "covariance", "tracking-error",
            "ewma", "var", "factor-model", "cross-sectional", "pca", "bake-off"]
 DOWNLOADS = ["prices", "benchmarks", "universe", "quality", "workbook"]

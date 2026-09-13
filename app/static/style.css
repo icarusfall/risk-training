@@ -362,3 +362,18 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
 }
 
 .pill.danger { background: var(--rose-wash); color: #9C5560; border-color: #F0D2D6; }
+
+/* --------------------------------------------------------------- figures */
+.figure {
+  margin: 1.8rem 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1rem .8rem;
+  box-shadow: var(--shadow);
+}
+.figure img { display: block; width: 100%; height: auto; border-radius: var(--radius-sm); }
+.figure figcaption {
+  margin-top: .7rem; font-size: .88rem; color: var(--ink-soft);
+  text-align: center; line-height: 1.5;
+}
