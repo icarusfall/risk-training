@@ -165,6 +165,14 @@ copula lands within 1%. That is flattering: &nu; = 4 was not fitted to this, and
 pairs of stocks are not independent pieces of evidence, since the same crises
 turn up in every one of them. The direction is not in doubt, though.
 
+<figure class="figure">
+  <img src="/static/img/monte-carlo-crash-together.png" width="1400" height="788" loading="lazy"
+       alt="Two cartoon panels of stick figures holding hands in a chain along a cliff top. Left, titled Gaussian copula: one figure at the end has slipped over the edge and dangles, while the rest stand calmly. Right, titled T copula: a pale pink gust of wind sweeps across the whole group, and every figure tumbles over the edge together, still linked, arms flailing.">
+  <figcaption>A Gaussian copula lets stocks slip one at a time. A t copula has a
+  shared gust that can blow them all over the edge at once, which is closer to what
+  happened in the data.</figcaption>
+</figure>
+
 !!! tip "Crashes are shared more than rallies"
     Do the same count for weeks when both stocks were in their **best** 5%. The
     total is 34,569, well below the 44,864 shared crashes. Both copulas above are

@@ -162,14 +162,7 @@ order.
 Charlie's view, 13 September 2026: with Module 12 the syllabus is essentially
 complete. What follows is optional.
 
-1. **Review, then push**, all drafted 13 September 2026 and committed but
-   deliberately not yet live:
-   - Module 13 (Monte Carlo, Student-t, rank correlation and copulas), which
-     also needs a cartoon.
-   - Module 8's new closing section on what "stock-specific" really means.
-   - Module 6's new section on options and full revaluation.
-
-2. **Email joiners directly once a sending domain is verified in Resend.** Set
+1. **Email joiners directly once a sending domain is verified in Resend.** Set
    `MAIL_FROM` to an address on the domain and `LOGIN_LINK_RECIPIENT=user` in
    Railway. Until then the sign-in form emails links to `ADMIN_EMAIL` to forward.
 
