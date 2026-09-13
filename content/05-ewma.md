@@ -6,10 +6,10 @@ summary: Your volatility estimate depends as much on the window you chose as on 
 time: 75 min
 ---
 
-Everything so far treated 2008 and last Tuesday as equally informative. That is a
-strong assumption, and it is wrong.
+Everything so far treated 2008 and last Tuesday as equally informative. This probably
+is not the case.
 
-## The window is a choice, and it shows
+## Choose your window
 
 Take your portfolio and compute its annualised volatility over the full sample.
 Now recompute it using only the last 52 weeks. Then only the last 260.
