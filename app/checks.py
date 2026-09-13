@@ -304,6 +304,10 @@ def _excess_kurt(c):
     return float(_port_return_series(c).kurt())        # = Excel KURT, already excess
 
 
+def _var_hist_95(c):
+    return float(100 * A.var_historical(_port_return_series(c), conf=0.95))
+
+
 def _var_cf(c):
     return float(100 * A.var_cornish_fisher(_port_return_series(c), conf=0.99))
 
@@ -452,6 +456,10 @@ CHECKS: dict[str, Check] = {ck.id: ck for ck in [
           "number", _excess_kurt,
           "KURT() already subtracts the 3. If you are out by roughly 3, you have "
           "raw kurtosis."),
+    Check("m11_var_hist_95", "11", "One-week 95% HISTORICAL VaR of your portfolio, "
+          "as a positive loss (%)", "percent", _var_hist_95,
+          "PERCENTILE.INC at 0.05 on your weekly portfolio returns, as in Module 6. "
+          "Now compare it with 95% parametric VaR: which is bigger?"),
     Check("m11_var_cf", "11", "One-week 99% Cornish-Fisher VaR of your portfolio, as "
           "a positive loss (%)", "percent", _var_cf,
           "Adjust z = NORM.S.INV(0.01) using SKEW and KURT, then multiply by the "

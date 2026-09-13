@@ -181,6 +181,70 @@ On the Wednesday benchmark the terms come out as:
 The kurtosis term does most of the work. It moves the quantile out by 1.3
 standard deviations, more than half the size of the normal quantile itself.
 
+### A gotcha: at 95%, fat tails make VaR smaller
+
+A question worth trying on a colleague. Equity returns have fat tails. Is their
+95% VaR higher or lower than a normal distribution with the same volatility would
+give?
+
+Most people say higher, since VaR is a tail measure and the tails are fat. At 95%
+it is usually lower.
+
+The kurtosis term shows why. Its coefficient, (z&sup3; &minus; 3z)/24, changes
+sign at z = &minus;&radic;3, which is the 95.8% confidence level:
+
+| Confidence | z | Effect of each point of excess kurtosis on z |
+|---|---|---|
+| 95% | &minus;1.645 | **+0.020**, pulling the quantile in towards zero |
+| 99% | &minus;2.326 | &minus;0.234, pushing it out |
+
+This is what fat tails mean once the volatility is held fixed. A fat-tailed
+distribution has more weight in its peak and more in its far tails, and with the
+same variance that weight has to come from somewhere: the shoulders, roughly one
+to two standard deviations out. The 95% point, at 1.645 standard deviations, sits
+in the shoulder. Fewer than 5% of weeks land beyond it, so the real 95% loss is
+closer to zero than the normal one.
+
+The data agrees. On the Wednesday benchmark, with Module 6's parametric and
+historical VaR at several confidence levels:
+
+| Confidence | Parametric | Historical | Weeks worse than parametric | A calibrated model expects |
+|---|---|---|---|---|
+| 90% | 3.04% | 2.37% | 73 | 111 |
+| 95% | 3.90% | 3.44% | 45 | 56 |
+| 97.5% | 4.65% | 4.98% | 34 | 28 |
+| 99% | 5.52% | 6.82% | 21 | 11 |
+| 99.5% | 6.11% | 8.05% | 18 | 6 |
+
+Up to 95% the normal distribution is too cautious. By 97.5% it is not cautious
+enough, and the further out you go the worse it gets.
+
+Some of the gap at 95% comes from the mean, rather than the shape. Historical VaR
+uses the actual returns, which averaged +0.19% a week, while parametric VaR
+assumes a mean of zero. Subtract the mean from each return first and historical
+95% VaR rises from 3.44% to 3.63%, still below the parametric 3.90%. On those
+demeaned returns the two measures cross at **96.4%**.
+
+It is not a quirk of the benchmark. Across 300 portfolios built the same way as
+yours:
+
+- At 95%, historical VaR was below parametric in all 300, by a median of 11%. On
+  demeaned returns it was still below in 94% of them, by a median of 6%.
+- At 99%, historical VaR was above parametric in all 300.
+- The crossover sat at a median of 96.4%, and between 95.4% and 97.3% for four
+  portfolios in five. Like everything else in this module it moves with the
+  sampling day: from 94.5% on Tuesdays to 97.4% on Fridays, for the benchmark.
+
+!!! tip "Why it matters"
+    95% is a common confidence level for internal risk reporting, and it was the
+    original RiskMetrics convention. Someone who warns that fat tails mean a 95%
+    VaR is understated has it the wrong way round for that number. The fat-tail
+    warning belongs to 99% and beyond, and to expected shortfall, which averages
+    over the whole tail.
+
+Compute your own portfolio's 95% historical VaR, and the 95% parametric VaR
+alongside it, and see which side of the line it falls.
+
 ### It overshoots
 
 Put the result next to the Module 6 numbers, for the same benchmark:
@@ -256,8 +320,10 @@ route and replaces the normal distribution altogether.
    negative skew and fat tails.
 2. Kurtosis is dominated by a few extreme weeks, so it depends heavily on how
    those weeks are sampled.
-3. Cornish&ndash;Fisher VaR corrects the normal quantile using those moments. On
+3. Fat tails raise VaR only far out. Below about 96% confidence the normal
+   distribution gives the larger number.
+4. Cornish&ndash;Fisher VaR corrects the normal quantile using those moments. On
    this data it overshoots historical VaR, and it inherits all of kurtosis's
    instability.
-4. Before trusting a number built on the fourth moment, change the sampling day
+5. Before trusting a number built on the fourth moment, change the sampling day
    and see whether it survives.

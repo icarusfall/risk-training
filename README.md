@@ -43,7 +43,7 @@ key behind. Nothing is hardcoded.
 relative tolerance. `MMULT`, `SUMPRODUCT`, pairwise `COVARIANCE.S` — all pass.
 
 **Each joiner gets their own portfolio**, seeded from their user id, so answers
-cannot be shared. There are 26 self-checks across Modules 1 to 11.
+cannot be shared. There are 27 self-checks across Modules 1 to 11.
 
 **Three datasets.** `raw` is all 100 names exactly as they arrive, ragged and
 uncleaned, for Module 1. `core` (2005 onwards, 81 names, cleaned and trimmed to
@@ -256,8 +256,20 @@ Cornish–Fisher VaR from 9.28% to 12.64% (+36%), against −4% for historical a
 +3% for historical. At Friday's excess kurtosis of 10.5 the expansion is not
 even monotone, running backwards for z between −0.31 and +0.55.
 
+**The 95% gotcha** (Charlie's): at 95% a fat-tailed distribution has a *smaller*
+VaR than the normal with the same volatility. The Cornish–Fisher kurtosis
+coefficient (z³−3z)/24 changes sign at z = −√3, 95.84% confidence: +0.020 per
+point at 95%, −0.234 at 99%. On the Wednesday benchmark, parametric against
+historical VaR: 90% 3.04 vs 2.37, 95% 3.90 vs 3.44, 97.5% 4.65 vs 4.98, 99% 5.52
+vs 6.82. Parametric 95% is breached 45 times against 56 expected. Part of the
+95% gap is the +0.19% weekly mean (historical on demeaned returns is 3.63%,
+still below), and on demeaned returns the crossover is 96.4% (Tuesday 94.5% to
+Friday 97.4%). Across 300 portfolios at 95%, historical is below parametric in
+100% (94% demeaned), median ratio 0.89 (0.94 demeaned); at 99% above in 100%;
+crossover median 96.4%, 10th–90th percentile 95.4–97.3%.
+
 Self-checks, on the joiner's own Wednesday weekly portfolio returns: `SKEW`,
-`KURT` (excess) and 99% Cornish–Fisher VaR.
+`KURT` (excess), 95% historical VaR and 99% Cornish–Fisher VaR.
 
 ### Module 12: fat-tailed distributions and Monte Carlo
 
@@ -291,7 +303,7 @@ Python, which makes this a sensible place to end the programme.
 app/
   main.py            FastAPI routes: pages, checks, downloads, sign-in, admin
   config.py          all settings, overridable by environment variable
-  checks.py          self-check engine (26 checks), per-joiner portfolios
+  checks.py          self-check engine (27 checks), per-joiner portfolios
   canary.py          bait paths, the answers.csv shortcut, cadence detection
   content.py         markdown lesson loader
   db.py              SQLite: users, login tokens, attempts, events
