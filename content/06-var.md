@@ -2,7 +2,7 @@
 number: 6
 slug: var
 title: Value at Risk
-summary: Parametric VaR is one line. Historical VaR is harder and more honest. Then check whether either one worked.
+summary: Parametric VaR is one formula. Historical VaR makes fewer assumptions. Then test whether either one worked.
 time: 75 min
 ---
 
@@ -12,15 +12,15 @@ bad is a bad week?**
 > VaR at 99% over one week is the loss that should be exceeded in only 1 week in
 > 100.
 
-## Parametric VaR: the easy one
+## Parametric VaR
 
 Assume returns are normal. Then the 99th percentile is 2.326 standard deviations
 below the mean, and:
 
 <div class="formula">VaR<sub>99%</sub> = &minus;(&mu; &times; h + z<sub>0.01</sub> &times; &sigma; &times; &radic;h)</div>
 
-With &mu; set to zero over a one-week horizon (its estimate is mostly noise
-anyway), this collapses to 2.326 &times; the weekly volatility.
+With &mu; set to zero over a one-week horizon (the estimate is mostly noise at
+this horizon), this reduces to 2.326 &times; the weekly volatility.
 
 !!! excel "One cell"
     ```
@@ -28,12 +28,13 @@ anyway), this collapses to 2.326 &times; the weekly volatility.
     ```
     `NORM.S.INV(0.01)` is &minus;2.326, so the minus sign gives a positive loss.
     Note `SQRT(PVar)` is the **weekly** volatility &mdash; do not annualise first.
-    Scaling a one-week VaR to ten days uses the same &radic;T rule, and inherits
-    the same iid assumption you already know is false.
+    Scaling a one-week VaR to ten days uses the same &radic;T rule, and relies on
+    the same iid assumption discussed in Module 2.
 
 ## Historical VaR: the honest one
 
-Make no distributional assumption. Use the portfolio's own history.
+Historical VaR makes no distributional assumption and uses the portfolio's own
+history.
 
 1. Compute your portfolio's realised return for every week:
    `=MMULT(ReturnsW!B2:M1115, weights)` &mdash; one number per week.
@@ -51,35 +52,33 @@ Make no distributional assumption. Use the portfolio's own history.
 Historical VaR will come out **larger** than parametric, typically by 15&ndash;25%
 on this data.
 
-That gap is the fat left tail. Equity returns are not normal: extreme moves happen
-far more often than a bell curve allows. The normal distribution says a &minus;5%
-week should occur about once a decade. Count them in your own series.
+The gap reflects the fat left tail of equity returns: extreme moves happen more
+often than a normal distribution predicts. The normal distribution says a
+&minus;5% week should occur about once a decade. Count them in your own series.
 
 !!! warning "Historical VaR has its own problem"
     It cannot produce a loss bigger than the worst one in your sample. Estimated
-    on 2004&ndash;2007 data, historical VaR would have told you the worst
-    imaginable week was about &minus;6%. It also weights a week from 2009 exactly
-    as heavily as last week &mdash; the window problem from Module 5, back again.
-    A common fix is to EWMA-weight the historical observations.
+    on 2004&ndash;2007 data, historical VaR would have put the worst week at
+    about &minus;6%. It also weights a week from 2009 exactly as heavily as last
+    week, which is the window problem from Module 5, back again. A common fix is to
+    EWMA-weight the historical observations.
 
 ## Expected shortfall
 
-VaR tells you the threshold. It says nothing about what lies beyond it. Expected
+VaR gives the threshold but says nothing about losses beyond it. Expected
 shortfall (conditional VaR) is the *average* loss given that you breached:
 
 ```
 =-AVERAGEIF(PortRet, "<"&PERCENTILE.INC(PortRet,0.01))
 ```
 
-It is typically 1.3&ndash;1.6&times; the VaR. Regulators have largely moved to ES
-precisely because VaR is indifferent to how bad the tail gets, and it is not
-sub-additive &mdash; the VaR of a combined book can exceed the sum of its parts,
-which is absurd for a risk measure. ES does not have that defect.
+It is typically 1.3&ndash;1.6&times; the VaR. Regulators have largely moved to ES,
+partly because VaR says nothing about the size of losses beyond the threshold,
+and partly because VaR is not sub-additive: the VaR of a combined book can exceed the sum of its parts, which is absurd for a risk measure. ES does not have that problem.
 
-## Backtesting: did any of it work?
+## Backtesting
 
-A VaR number is a **prediction**, and predictions can be scored. This is the part
-most people skip and it is the part that matters.
+A VaR number is a **prediction**, so it can be tested against what happened.
 
 At 99% over 1,114 weeks you expect about **11 exceptions**. Count your actual
 ones:
@@ -89,12 +88,12 @@ ones:
 ```
 
 Too many and you are understating risk. Too few and you are holding capital
-against a danger that is not there.
+against losses that do not happen.
 
 ### The Kupiec test
 
-Is your exception count statistically plausible, or just unlucky? The
-proportion-of-failures test:
+Is your exception count statistically plausible? The proportion-of-failures
+test:
 
 <div class="formula">
 LR = &minus;2 ln[ (1&minus;p)<sup>n&minus;x</sup> p<sup>x</sup> ] + 2 ln[ (1&minus;x/n)<sup>n&minus;x</sup> (x/n)<sup>x</sup> ]
@@ -110,10 +109,10 @@ model is calibrated, LR follows &chi;&sup2; with one degree of freedom. Reject a
 
 !!! tip "What Kupiec misses"
     It counts exceptions but ignores **when** they happened. Eleven exceptions
-    spread evenly across twenty years is a healthy model. Eleven exceptions in
-    October 2008 and none since is a model that failed exactly when it mattered.
-    The Christoffersen test adds a clustering check, and in practice clustering is
-    the more damning failure.
+    spread evenly over twenty years suggests a reasonable model; eleven
+    exceptions all in October 2008 suggests a model that failed in the period
+    that mattered most. The Christoffersen test adds a clustering check, and in
+    practice clustering is often the more serious problem.
 
 Run the backtest on both your parametric and your historical VaR. One of them will
 do noticeably better. Form a view on why.

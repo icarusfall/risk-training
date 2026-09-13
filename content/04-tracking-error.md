@@ -6,9 +6,8 @@ summary: Active weights, and decomposing total risk into per-holding contributio
 time: 60 min
 ---
 
-Total portfolio volatility is rarely what anyone on this desk is asked about.
-The question is almost always **relative**: how far can this portfolio drift from
-its benchmark?
+On this desk the question is usually about **relative** risk rather than total
+volatility: how far can this portfolio drift from its benchmark?
 
 ## Active weights
 
@@ -26,14 +25,14 @@ on, which factors &mdash; are driving it: what is the tracking error
 **breakdown**? Interestingly, just swapping in relative weights causes problems
 for the breakdown of risk. More on that at the end of the module.
 
-Two properties worth internalising:
+Two useful properties:
 
 - Active weights **sum to zero**. A long-only portfolio has a long/short active
   position, which is why tracking error can be small even when both portfolio and
   benchmark are volatile.
 - If you hold the benchmark exactly, w<sub>a</sub> is all zeros and TE is zero.
-  Use this as your test. Set your weights equal to the benchmark weights on your
-  front tab and confirm you get zero out.
+  This makes a good test: set your weights equal to the benchmark weights on your
+  front tab and confirm you get zero.
 
 Your benchmark weights are on [the home page](/) &mdash; cap weights across your
 own holdings, renormalised to 100%.
@@ -41,20 +40,19 @@ own holdings, renormalised to 100%.
 !!! tip "What the number means"
     Tracking error is a one-standard-deviation annual figure. A TE of 4% means
     that in roughly two years out of three, your relative return should land
-    within &plusmn;4% of the benchmark. It is symmetric: it does not distinguish
-    beating the benchmark from missing it. Everyone forgets this and describes
-    tracking error as though it were a downside measure.
+    within &plusmn;4% of the benchmark. It is symmetric, covering outperformance as well as underperformance, and everyone forgets this at some point and describes it as a downside measure.
 
 ## Where does the risk come from?
 
-A question you will be asked often in this job is *which position is driving this?* The naive answer &mdash; "the biggest weight" &mdash; is often
-wrong, because a large position in a placid utility can matter less than a small
-one in a miner. Though in practice, as you are about to see, the boring answer
-holds up more often than people expect.
+A question you will be asked often in this job is *which position is driving
+this?* The naive answer &mdash; "the biggest weight" &mdash; is often wrong,
+because a large position in a placid utility can matter less than a small one in
+a miner. In practice, as you are about to see, the boring answer holds up more
+often than people expect.
 
 We want a decomposition that **adds up**: a per-holding number summing exactly to
-total portfolio risk. Volatility is not additive, so this is not obvious &mdash;
-but it works out beautifully because of one property.
+total portfolio risk. Volatility is not additive, but a property of the formula
+makes this possible.
 
 ### Marginal contribution to risk
 
@@ -68,15 +66,14 @@ The whole vector is one `MMULT` of &Sigma; and **w**, divided by a scalar.
 
 <div class="formula">CTR<sub>i</sub> = w<sub>i</sub> &times; MCTR<sub>i</sub></div>
 
-And now the useful part:
+The contributions add up:
 
 <div class="formula">&Sigma;<sub>i</sub> CTR<sub>i</sub> = &sigma;<sub>p</sub></div>
 
-The contributions sum **exactly** to total volatility. This is Euler's theorem
-for homogeneous functions: &sigma;<sub>p</sub>(w) is homogeneous of degree one in
-**w**, so the weighted sum of its partial derivatives returns the function itself.
-
-That single property is why the entire risk industry reports risk this way.
+They sum **exactly** to total volatility. This is Euler's theorem for homogeneous
+functions: &sigma;<sub>p</sub>(w) is homogeneous of degree one in **w**, so the
+weighted sum of its partial derivatives returns the function itself. It is the
+reason risk systems commonly report risk this way.
 
 !!! tip "A simple way to think about it"
     A simple way to think about this is that we are adding up the rows and
@@ -85,17 +82,17 @@ That single property is why the entire risk industry reports risk this way.
     Take the covariance matrix and multiply every cell by the weight of its row
     **and** the weight of its column, so cell (i, j) becomes
     w<sub>i</sub> w<sub>j</sub> &Sigma;<sub>ij</sub>. Add up every cell in that
-    grid and you get the portfolio variance &mdash; exactly the
-    w&prime;&Sigma;w from Module 3, just done by hand.
+    grid and you get the portfolio variance &mdash; the same
+    w&prime;&Sigma;w as in Module 3, done by hand.
 
     Now, at the last step, add up the grid one column at a time instead of all at
     once. You are left with a single row of numbers, one per holding, that add up
     to the total. That row is the amount each holding &mdash; or, later on, each
     factor &mdash; contributes to it.
 
-    The one wrinkle: that row adds up to the total **variance**. Divide each
-    number by the portfolio volatility and the row adds up to the **volatility**
-    instead. Those are your CTRs, and it is the same number as the formula above.
+    One detail: that row adds up to the total **variance**. Divide each number
+    by the portfolio volatility and the row adds up to the **volatility**
+    instead. Those are your CTRs, and they match the formula above.
     ```
     grid cell      =B$1 * $A2 * Cov!B2        ' weight across row 1, weight down column A
     column total   =SUM(B2:B13)               ' one per holding
@@ -128,12 +125,12 @@ That single property is why the entire risk industry reports risk this way.
     Check that `SUM` of your CTR column equals your annualised portfolio
     volatility. If it does not, something upstream is misaligned.
 
-## The thing to notice
+## Weights versus contributions
 
 Sort your holdings by weight, then by contribution to risk, and compare.
 
-Honestly, the two lists will usually look quite similar. We built 300 random
-portfolios the same way yours was built and checked:
+The two lists will usually look quite similar. We built 300 random portfolios the
+same way yours was built and checked:
 
 | | |
 |---|---|
@@ -142,49 +139,45 @@ portfolios the same way yours was built and checked:
 | Rank correlation between weight and contribution | median 0.80 |
 
 So for total risk, the boring answer is usually close, and the covariance matrix
-mostly confirms what the weights already told you. Anyone who tells you
-otherwise has probably only ever looked at the interesting cases.
+mostly confirms what the weights already suggest. Anyone who tells you otherwise has probably only ever looked at the interesting cases.
 
-Where the covariance matrix earns its keep is the exceptions &mdash; the roughly
-one portfolio in four where the biggest risk is not even a top-three weight.
-When the orders do diverge, it is typically a mid-sized bank or miner
-contributing more than its weight suggests, or a large consumer staples position
-contributing less. Two reasons compound:
+The covariance matrix is most useful in the exceptions: roughly one portfolio in
+four, where the biggest risk is not one of the three biggest weights. When the
+orders do diverge, it is typically a mid-sized bank or miner contributing more
+than its weight suggests, or a large consumer staples position contributing
+less. There are two reasons:
 
 1. **Its own volatility** is higher.
-2. **Its correlation with everything else you own** is higher &mdash; and this is
-   the part people miss. A stock that is volatile but uncorrelated adds less risk
-   than a stock that is moderately volatile and moves with the rest of the book.
+2. **Its correlation with everything else you own** is higher, which is easy to
+   overlook. A stock that is volatile but uncorrelated adds less risk than a
+   stock that is moderately volatile and moves with the rest of the portfolio.
 
-That second point is why contributions are worth computing even when they mostly
-agree with the weights: the exceptions are precisely the positions that surprise
-people. And the picture shifts a good deal more once you move from total risk to
-active risk, which is where this module ends up.
+That is why contributions are worth computing even when they mostly agree with
+the weights: the exceptions are the positions most likely to be surprising. The
+differences are larger for active risk, which is covered at the end of this
+module.
 
 !!! warning "Contributions can be negative"
     If a holding is negatively correlated with the rest of the portfolio, its CTR
-    is negative &mdash; it *reduces* total risk. The contributions still
-    sum to &sigma;<sub>p</sub>. This surprises people, so be ready for it.
+    is negative, meaning it *reduces* total risk. The contributions still sum to
+    &sigma;<sub>p</sub>. This can be surprising the first time you see it.
 
-## Now the important bit: decomposing active risk
+## Decomposing active risk
 
-Everything above *appears* to work identically with active weights. Substitute
-w<sub>a</sub> for **w** and you get contributions to tracking error. That is the
-report a portfolio manager actually wants &mdash; which of my active bets is
-using up my risk budget?
+The same method can be applied to active weights. Substitute w<sub>a</sub> for
+**w** and you get contributions to tracking error, which is the report a
+portfolio manager usually wants: which active positions are using up the risk
+budget?
 
-**The total will be right. The attribution will be wrong.**
-
-This is worth labouring, because it is a genuine defect rather than an
-approximation, and expensive third-party risk systems fall for it.
+This gives the correct total, but it can attribute the risk to the wrong
+positions. It is a real error rather than an approximation, and some third-party
+risk systems make it.
 
 ### The 5% cash example
 
 Suppose you hold 95% of the FTSE 100, matched weight for weight, and 5% cash.
-
-Think about what you have actually decided. Every stock is held at its index
-weight, scaled down. The *only* active decision in the entire portfolio is the
-cash.
+Every stock is held at its index weight, scaled down, so the only active decision
+in the portfolio is the cash.
 
 Your active weights are:
 
@@ -192,8 +185,7 @@ Your active weights are:
 - cash: **+0.05**
 
 Tracking error comes out at exactly 5% of the benchmark volatility &mdash; on our
-data, 5% &times; 17.09% = **0.854%**. That is correct, and comfortingly obvious:
-you are 5% out of the market.
+data, 5% &times; 17.09% = **0.854%**. That is correct, and comfortingly obvious: you are 5% out of the market.
 
 Now decompose it. Cash has zero variance and zero covariance with everything, so
 its **entire row of &Sigma; is zeros**. Therefore:
@@ -202,11 +194,11 @@ its **entire row of &Sigma; is zeros**. Therefore:
 CTR<sub>cash</sub> = w<sub>a,cash</sub> &times; (&Sigma;w<sub>a</sub>)<sub>cash</sub> / &sigma;<sub>a</sub> = 0.05 &times; 0 / &sigma;<sub>a</sub> = 0
 </div>
 
-Your risk report now says that **100% of your tracking error comes from your
-stock holdings, and none of it from the cash.**
+The risk report now says that **100% of your tracking error comes from your stock
+holdings, and none of it from the cash.**
 
-That is nonsense. The stocks are the index, held at index weight. They are not a
-bet on anything. The cash is the only thing you did.
+That is nonsense. The stocks are held in index proportions, so they are not an
+active bet; the cash is the only active decision.
 
 | Decomposition | Cash | Stocks | Total |
 |---|---|---|---|
@@ -215,19 +207,17 @@ bet on anything. The cash is the only thing you did.
 
 ### Why it happens
 
-Because **in active space, cash is not riskless.**
+**In active space, cash carries risk.** Holding cash instead of the index is a
+*short position in the index*. Its benchmark-relative return is
+r<sub>cash</sub> &minus; r<sub>b</sub> = &minus;r<sub>b</sub>, which is as
+volatile as the index itself.
 
-Holding cash instead of the index is a *short position in the index*. Its
-benchmark-relative return is r<sub>cash</sub> &minus; r<sub>b</sub> =
-&minus;r<sub>b</sub>, which is exactly as volatile as the index itself. There is
-nothing safe about it.
-
-The plain covariance matrix cannot see this, because it describes **absolute**
+The plain covariance matrix does not show this, because it describes **absolute**
 returns, and in absolute terms cash really is riskless. A zero row in &Sigma;
-forces a zero contribution no matter how large the active weight sitting against
-it. And the Euler identity still holds &mdash; the contributions still sum to the
-tracking error &mdash; so nothing looks broken. The report is simply pointing at
-the wrong positions.
+forces a zero contribution no matter how large the active weight against it. The
+Euler identity still holds, so the contributions still sum to the tracking error
+and nothing looks obviously wrong, but the report attributes the risk to the
+wrong positions.
 
 ### The fix: rotate the matrix into active space
 
@@ -237,23 +227,23 @@ Replace every covariance with the covariance of **benchmark-relative** returns:
 &Sigma;&#771;<sub>ij</sub> = Cov(r<sub>i</sub> &minus; r<sub>b</sub>, r<sub>j</sub> &minus; r<sub>b</sub>) = &Sigma;<sub>ij</sub> &minus; Cov(r<sub>i</sub>, r<sub>b</sub>) &minus; Cov(r<sub>j</sub>, r<sub>b</sub>) + Var(r<sub>b</sub>)
 </div>
 
-You already have every piece of that:
+You already have each piece:
 
 - **Cov(r<sub>i</sub>, r<sub>b</sub>)** is the *i*-th element of
   &Sigma;w<sub>b</sub> &mdash; one `MMULT`.
 - **Var(r<sub>b</sub>)** is w<sub>b</sub>&prime;&Sigma;w<sub>b</sub>, a single
   number.
 
-Then decompose using your **portfolio** weights, not your active weights. The
-rotation has already taken the benchmark out:
+Then decompose using your **portfolio** weights rather than your active weights,
+because the rotation has already removed the benchmark:
 
 <div class="formula">
 &sigma;<sub>a</sub><sup>2</sup> = w<sub>p</sub>&prime; &Sigma;&#771; w<sub>p</sub> &nbsp;&nbsp;&nbsp;&nbsp; CTR<sub>i</sub> = w<sub>p,i</sub> (&Sigma;&#771; w<sub>p</sub>)<sub>i</sub> / &sigma;<sub>a</sub>
 </div>
 
-The total is **identical** &mdash; check that first, it is a good test of your
-algebra. But the attribution now lands on the positions that caused it. In the
-cash example, cash takes 100% and the stocks take 0%.
+The total is **identical**, which is a good check on your algebra, and the
+attribution now falls on the positions that caused it. In the cash example, cash
+takes 100% and the stocks take 0%.
 
 ### Two ways to build it
 
@@ -276,16 +266,15 @@ above.
 
 It is less typing, and frankly probably the easier route. But the adjustments
 are more abstract, and that makes it easier to make a mistake without noticing.
-It helps to recognise them for what they are: **beta adjustments**. The
-covariance of a stock with the benchmark is just its beta times the benchmark
-variance, so
+It helps to recognise them as **beta adjustments**. The covariance of a stock
+with the benchmark is its beta times the benchmark variance, so
 
 <div class="formula">
 &Sigma;&#771;<sub>ij</sub> = &Sigma;<sub>ij</sub> &minus; &beta;<sub>i</sub>&sigma;<sub>b</sub><sup>2</sup> &minus; &beta;<sub>j</sub>&sigma;<sub>b</sub><sup>2</sup> + &sigma;<sub>b</sub><sup>2</sup>
 </div>
 
 If you build both, subtract one matrix from the other. Every cell should be zero,
-and if it is, you can trust either.
+and if it is, you can use either.
 
 !!! excel "Route one: a relative returns tab"
     Put your benchmark weights in a row on a `Weights` sheet, in the same ticker
@@ -301,13 +290,13 @@ and if it is, you can trust either.
     ```
     =-$N2
     ```
-    Then run the Module 3 covariance recipe on `RelW`, cash column included.
-    Nothing new to learn; only the input has changed.
+    Then run the Module 3 covariance recipe on `RelW`, cash column included. Only
+    the input has changed.
 
 !!! excel "Route two: adjusting the matrix you already have"
     Add cash to your universe first: one extra row and column of **zeros** in the
     covariance matrix, a benchmark weight of 0, and a portfolio weight of 5%.
-    Cash really does have zero absolute risk &mdash; that is the whole point.
+    Cash has zero absolute risk.
 
     Then, beside your covariance matrix:
     ```
@@ -333,9 +322,9 @@ and if it is, you can trust either.
     already computed the ordinary way. If it does not, your row and column
     vectors are the wrong way round.
 
-### It is not only about cash
+### Other cases
 
-Cash is the cleanest illustration, but the same defect bites whenever an asset's
+Cash is the simplest example, but the same problem arises whenever an asset's
 **absolute** risk is a poor guide to its **benchmark-relative** risk:
 
 - Any holding that is not in the benchmark at all.
@@ -343,17 +332,16 @@ Cash is the cleanest illustration, but the same defect bites whenever an asset's
 - A futures or derivative overlay, where notional and market value diverge.
 - Any near-riskless asset: short-dated gilts, money market funds, collateral.
 
-Anywhere &Sigma; has a small row and the active weight against it is not small,
-the naive decomposition will quietly under-attribute.
+Wherever &Sigma; has a small row and the active weight against it is not small,
+the naive decomposition will under-attribute risk to that position.
 
-!!! warning "An honest caveat"
-    The two decompositions are not simply right and wrong in every case. They
-    answer different counterfactuals.
+!!! warning "A caveat"
+    The two decompositions answer different questions.
 
     The naive one asks *"if I scale this active position on its own, what happens
     to tracking error?"* The rotated one asks *"if I scale this holding, funded
-    out of the benchmark, what happens?"* The second is what actually happens
-    when you trade, which is why it is the better default &mdash; but they do differ.
+    out of the benchmark, what happens?"* The second matches what happens when
+    you trade, which is why it is the better default.
 
     You can see the difference without any cash at all. Take a portfolio with two
     stock tilts and everything else at benchmark weight. The naive decomposition
@@ -362,15 +350,15 @@ the naive decomposition will quietly under-attribute.
     index too &mdash; on our data they collectively carry about &minus;0.5
     percentage points of the tracking error.
 
-    Know which question you are answering. The failure to avoid is not picking the
-    wrong one; it is running the naive decomposition on a portfolio holding cash
-    and never noticing that the largest position in the report has vanished.
+    Be clear which question you are answering. The main thing to avoid is using
+    the naive decomposition on a portfolio that holds cash, where the largest
+    active position disappears from the report.
 
 ## Do both, and compare
 
 Build the absolute decomposition and the active one side by side. The two
-rankings are often strikingly different, because an overweight in a
-low-volatility name can still be a large active bet.
+rankings often differ noticeably, because an overweight in a low-volatility name
+can still be a large active bet.
 
 Then add 5% cash to your own portfolio and run it both ways. The totals will
-agree; watch where the attribution moves.
+agree; see where the attribution moves.

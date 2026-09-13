@@ -2,14 +2,14 @@
 number: 10
 slug: bake-off
 title: The bake-off
-summary: Four models, one portfolio. Which would you have trusted in March 2020?
+summary: Five models, one portfolio. Which would you have trusted in March 2020?
 time: half a day
 ---
 
-Everything so far has been construction. This module is judgement, which is the
-part of the job that does not come out of a textbook.
+The earlier modules built the models. This module compares them, which involves
+judgement as well as calculation.
 
-You now hold four estimates of the same covariance matrix:
+You now have five estimates of the same covariance matrix:
 
 | # | Model | Parameters | Built in |
 |---|---|---|---|
@@ -19,9 +19,9 @@ You now hold four estimates of the same covariance matrix:
 | 4 | Cross-sectional | 186 | Module 8 |
 | 5 | Statistical / PCA | ~490 | Module 9 |
 
-They disagree. The exercise is to work out **which disagreements matter**, and to
-form a defensible view. There is no answer key for the last section of this
-module &mdash; write half a page and we will talk about it.
+The estimates differ, and the exercise is to work out **which differences
+matter** and form a view you can defend. There is no answer key for the last
+section of this module; write half a page and we will talk about it.
 
 ## First, the trap
 
@@ -31,18 +31,16 @@ Module 3 sample-covariance prediction over the same window.
 They will match almost exactly. On the equal-weighted portfolio over the 156
 weeks to September 2026, both come out at **13.05%**.
 
-This is not evidence that the model is any good. The sample covariance is *fitted to*
-that window, so of course it reproduces it &mdash; asking a model to predict the
-data it was estimated on tells you nothing at all about forecasting.
+This tells you nothing about forecasting ability, because the sample covariance
+was estimated on that same window.
 
-Almost every bad backtest you will ever be shown is a version of this mistake.
-Learn to spot it in one question: **what data did the model see before it made
-this prediction?**
+Many flawed backtests make a version of this mistake. A useful question to ask
+of any backtest is: **what data did the model see before it made this
+prediction?**
 
 ## The bias statistic
 
-Here is the honest test, and the single most useful number in this whole
-programme.
+The bias statistic is a fairer test.
 
 For each week, predict the volatility using **only data available before that
 week**. Then standardise what actually happened:
@@ -56,7 +54,7 @@ deviation of **1**. So:
 
 - **bias &gt; 1** &mdash; you understated risk. Returns came out bigger than
   predicted.
-- **bias &lt; 1** &mdash; you overstated risk. Capital held against nothing.
+- **bias &lt; 1** &mdash; you overstated risk, and held capital against nothing.
 - **bias &asymp; 1** &mdash; calibrated.
 
 !!! excel "The rolling forecast"
@@ -66,17 +64,17 @@ deviation of **1**. So:
     ratio        =B107 / C107
     bias         =STDEV.S(D107:D1114)
     ```
-    The prediction for week *t* must use weeks *t*&minus;104 to *t*&minus;1
-    **inclusive of neither t itself**. Getting this off by one row is the classic
-    error and it flatters the model, because the return you are predicting is
-    sitting inside the window you used to predict it.
+    The prediction for week *t* must use weeks *t*&minus;104 to *t*&minus;1, and
+    not week *t* itself. Being one row out is a common error, and it makes the
+    model look better than it is, because the return you are predicting is then
+    inside the window used to predict it.
 
     For the EWMA version, update the variance **after** recording each forecast:
     ```
     forecast_t  =SQRT(var_t)
     var_(t+1)   =0.94*var_t + 0.06*r_t^2
     ```
-    Same discipline. Predict, then learn.
+    Same discipline either way: predict, then learn.
 
 ### What you should get
 
@@ -90,26 +88,24 @@ On the equal-weighted portfolio over the full sample:
 | EWMA &lambda; = 0.94 | **1.060** | **10** |
 | EWMA &lambda; = 0.97 | 1.040 | 15 |
 
-Three things to take from this table.
+Three points from this table.
 
-**Everything understates risk except the long window.** Biases above 1 across the
-board. Volatility clustering means the big weeks arrive together, and a forecast
-built on a calm stretch is always caught out.
+**All the methods except the long window understate risk**, with biases above 1.
+Volatility clustering means large moves tend to arrive together, so forecasts
+built on calm periods are caught out.
 
-**EWMA wins, and not only on the bias.** &lambda; = 0.94 has the fewest extreme
-outliers &mdash; 10 against 21 for a flat 104-week window. Responsiveness does
-not just move the average closer to 1; it reduces how *badly* wrong you are in
-the worst weeks, which is the thing that actually costs money.
+**EWMA with &lambda; = 0.94 has the fewest extreme outliers**: 10, against 21 for a
+flat 104-week window. As well as bringing the bias closer to 1, it reduces the
+size of the errors in the worst weeks, which are the ones that cost the most.
 
-**The 260-week window scores 0.964, and that is not a win.** It looks closest to
-1, but it gets there by being permanently too high &mdash; consistently
-overstating in calm periods and still understating in crises. A single summary
-statistic can hide compensating errors, which is why you look at the outlier
-count as well.
+**The 260-week window scores 0.964, but that is misleading.** It is closest to 1
+because it is too high in calm periods and too low in crises, and the two errors
+partly cancel. A single summary statistic can hide offsetting errors, which is
+why the outlier count is worth looking at as well.
 
 ## Test 2: the crises, one at a time
 
-An average across twenty years tells you about the average week, which is rarely the week anyone is worried about.
+An average over twenty years hides how the methods behave in crises.
 
 Run your forecasts through each episode and compare EWMA(0.94) with a rolling
 104-week window:
@@ -123,22 +119,18 @@ Run your forecasts through each episode and compare EWMA(0.94) with a rolling
 | Latest | 12.2% | 13.5% |
 
 In the two big equity crises, EWMA is 11 and 16 percentage points higher. The
-rolling window is still averaging in years of calm; by the time it catches up the
-crisis is over. If you had been quoting the 104-week number in March 2020 you
-would have been telling a portfolio manager their risk was about half what it
-actually was.
+rolling window still contains years of calm data, so by the time it catches up
+the crisis has passed. If you had quoted the 104-week number in March 2020, you
+would have told a portfolio manager that their risk was about half what it was.
 
-And note the fourth row, which is the most interesting one: **the 2022 gilt crisis
-barely registers in equity volatility at all**. It was the defining risk event of
-recent UK financial history, it nearly broke the LDI industry, and aggregate FTSE
-100 equity vol went from 14.8% to 15.1%.
+The fourth row is also worth noting: **the 2022 gilt crisis barely shows up in
+equity volatility**. It was a severe event for UK pension schemes, yet both
+measures put FTSE 100 equity volatility at around 15% during it.
 
-That is worth understanding rather than filing away. The shock transmitted
-through gilt yields, so it hit long-duration equity &mdash; real estate ran at 1.6
-times its calm-period volatility, utilities 1.25 &mdash; while banks, which earn
-more when rates rise, did not move at all. An equity risk model was the wrong
-instrument for that crisis. Knowing which instrument answers which question is
-most of what a risk function is for.
+The shock was transmitted through gilt yields, so it affected long-duration
+equity sectors: real estate volatility was 1.6 times its calm-period level and
+utilities 1.25 times, while banks were largely unaffected. An equity risk model
+was not the right tool for monitoring that episode.
 
 ## Test 3: where the models disagree most
 
@@ -148,19 +140,16 @@ Build three portfolios and price each under all five matrices:
 2. **Five names from five different industries.** Well spread.
 3. **Your own portfolio.**
 
-The pattern to look for: the single-factor model should understate the
-concentrated portfolio, because all it can see is market exposure. The
-cross-sectional model should handle it better, because the shared
-`ind_Financials` exposure knows that banks move together for bank reasons. The
-sample covariance will look fine in-sample and is the least trustworthy out of it.
+Based on Module 8, you should expect the single-factor model to understate the
+bank portfolio. The cross-sectional model does not do much better for banks,
+because its Financials factor mixes banks with insurers and asset managers,
+although it does better for groups such as miners. The sample covariance will
+look good in-sample, which, as above, says little about how well it forecasts.
 
 ## Test 4: minimum variance, out of sample
 
-This is the one that changes how people think.
-
-For each &Sigma;, find the minimum-variance portfolio &mdash; the weights
-minimising w&prime;&Sigma;w subject to weights summing to 1. Use Solver, or
-directly:
+For each &Sigma;, find the minimum-variance portfolio: the weights minimising
+w&prime;&Sigma;w subject to the weights summing to 1. Use Solver, or directly:
 
 <div class="formula">w = &Sigma;<sup>&minus;1</sup>1 / (1&prime;&Sigma;<sup>&minus;1</sup>1)</div>
 
@@ -169,29 +158,28 @@ directly:
     =MMULT(MINVERSE(Cov), ones) / SUM(MMULT(MINVERSE(Cov), ones))
     ```
     Estimate each &Sigma; on data up to a cut-off date, then measure what the
-    resulting portfolio actually realised *after* it. That is the only
-    comparison that means anything.
+    resulting portfolio realised *after* that date. This out-of-sample comparison
+    is the meaningful one.
 
-What you should find: the **sample covariance produces the most extreme weights
+You should find that the **sample covariance produces the most extreme weights
 and the worst out-of-sample result**, often including large negative positions if
 you allow them.
 
-The reason is worth stating precisely, because it is the deepest idea in this
-programme. Matrix inversion amplifies the smallest eigenvalues, and the smallest
-eigenvalues of a sample covariance matrix estimated from 3,321 parameters and
-1,114 observations are almost pure noise. The optimiser then loads up on exactly
-those directions, because they look like free diversification. It is not
-diversification; it is estimation error.
+The reason is that matrix inversion amplifies the smallest eigenvalues, and the
+smallest eigenvalues of a sample covariance matrix estimated from 3,321 parameters
+and 1,114 observations are mostly noise. The optimiser puts large weights on
+those directions because they appear to offer diversification, when in fact they
+mostly reflect estimation error.
 
-So the matrix that fits history best forecasts worst. Factor models win **because**
-they throw information away.
+So the matrix that fits the past most closely can forecast worst. Factor models
+tend to do better because they impose structure and estimate fewer parameters.
 
 !!! tip "What this is called, and what it fixes"
-    This is the bias-variance trade-off, and the mainstream fixes are worth
-    knowing by name: **Ledoit-Wolf shrinkage** pulls the sample matrix toward a
-    structured target; **random matrix theory** filters eigenvalues
-    indistinguishable from noise; **factor models** impose structure directly.
-    All three do the same job &mdash; accept some bias to cut variance.
+    This is the bias-variance trade-off, and the main fixes are worth knowing by
+    name: **Ledoit-Wolf shrinkage** pulls the sample matrix toward a structured
+    target; **random matrix theory** filters eigenvalues indistinguishable from
+    noise; **factor models** impose structure directly. All three accept some
+    bias in exchange for lower variance.
 
 ## The question to answer
 
@@ -199,26 +187,26 @@ they throw information away.
 > number for your portfolio. Which model, which window, what number do you give,
 > and what do you say about the uncertainty around it?
 
-Write half a page. Some things a good answer tends to include:
+Write half a page. Good answers tend to include:
 
 - A **choice**, made explicitly, with the reason stated.
 - An acknowledgement that on that date **every one of these models was about to
   be wrong**, and roughly by how much.
-- Something about the difference between the number and the **conversation** &mdash;
-  what you would tell the manager to watch, not just what the spreadsheet says.
-- The honest admission that a model estimated on survivorship-biased data from
-  today's index constituents has a floor on how good it can be.
+- Something about the **conversation** as well as the number: what you would
+  tell the manager to watch.
+- An acknowledgement that a model estimated on survivorship-biased data from
+  today's index constituents has limits on how good it can be.
 
-There is no correct answer. There are answers that show you understood what you
-built, and answers that show you operated a spreadsheet.
+There is no single correct answer. A good answer shows that you understand what
+each model assumes.
 
 ---
 
 ## That is the programme
 
-You have built an equity risk model from a column of prices, four different ways,
+You have built an equity risk model from a column of prices, five different ways,
 and you know why they disagree. You have found bad data by looking at it. You know
 what tracking error is, where risk comes from in a portfolio, what VaR does and
-does not tell you, and why the model that fits best forecasts worst.
+does not tell you, and why the model that fits the past best can forecast worst.
 
 Come and find me &mdash; I would like to hear which part surprised you most.

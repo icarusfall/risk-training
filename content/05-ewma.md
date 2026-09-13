@@ -14,8 +14,7 @@ is not the case.
 Take your portfolio and compute its annualised volatility over the full sample.
 Now recompute it using only the last 52 weeks. Then only the last 260.
 
-The numbers will differ substantially &mdash; often by a factor of two. Nothing
-about your portfolio changed. Only the window did.
+The numbers will differ substantially &mdash; often by a factor of two.
 
 !!! excel "Rolling windows"
     Put the window length in one cell, say `Ctrl!B1 = 260`, and the number of
@@ -29,15 +28,15 @@ about your portfolio changed. Only the window did.
     =OFFSET(Dev!$B$2, Ctrl!$B$3 - Ctrl!$B$1, 0, Ctrl!$B$1, 81)
     ```
     Feed that into the same `MMULT(TRANSPOSE(...), ...)` as Module 3, dividing by
-    `Ctrl!B1 - 1` rather than the full count. Now typing a new window length
-    recalculates everything, and you can watch the answer move.
+    `Ctrl!B1 - 1` rather than the full count. Typing a new window length then
+    recalculates everything, so you can watch the answer change.
 
     Count the data rows only. If your `Dev` sheet keeps the column means in row 1,
     as Module 3 suggests, then `COUNT(Dev!B:B)` picks those up too and every
-    window quietly ends one row past the end of your data.
+    window ends one row past the end of your data.
 
-    `OFFSET` is volatile. The non-volatile equivalent glues two `INDEX` calls
-    together into a range:
+    `OFFSET` is volatile. The non-volatile equivalent joins two `INDEX` calls into
+    a range:
     ```
     =INDEX(Dev!$B$2:$CD$1115, Ctrl!$B$3 - Ctrl!$B$1 + 1, 0):INDEX(Dev!$B$2:$CD$1115, Ctrl!$B$3, 0)
     ```
@@ -47,19 +46,20 @@ about your portfolio changed. Only the window did.
 
 ### The trade-off
 
-- **Short window.** Responsive &mdash; picks up a regime change quickly. Also
-  noisy, and it forgets crises entirely. A 52-week window in early 2007 had never
-  heard of a financial crisis.
-- **Long window.** Stable, and remembers tail events. Also sluggish: in March 2020
-  a ten-year window was still mostly telling you about 2012.
+- **Short window.** Picks up a change in conditions quickly. It is also noisy,
+  and crises drop out of it quickly. A 52-week window in early 2007 had never heard of a financial crisis.
+- **Long window.** Stable, and keeps tail events in the estimate. It is also
+  slow to react: in March 2020 a ten-year window was still mostly describing
+  2012.
 
-There is no correct answer. There is only being explicit about which error you
-prefer.
+Neither is right in general. The choice depends on which kind of error you would
+rather have, and it is worth stating which window you used.
 
 ## Exponential weighting
 
-Rather than a hard cut-off &mdash; everything inside the window counts fully,
-everything outside counts zero &mdash; let influence decay smoothly.
+Instead of a hard cut-off, where everything inside the window counts fully and
+everything outside counts zero, the weight on each observation can decay
+smoothly.
 
 <div class="formula">
 &Sigma; = (1 &minus; &lambda;) &Sigma;<sub>k</sub> &lambda;<sup>k</sup> r<sub>t&minus;k</sub> r&prime;<sub>t&minus;k</sub>
@@ -68,8 +68,8 @@ everything outside counts zero &mdash; let influence decay smoothly.
 The most recent observation gets weight (1&minus;&lambda;), the one before
 &lambda;(1&minus;&lambda;), and so on. The weights sum to one.
 
-**Half-life** &mdash; how long until an observation counts half as much &mdash; is
-the intuitive handle:
+**Half-life**, the time until an observation counts half as much, is the easiest
+way to think about &lambda;:
 
 <div class="formula">half-life = ln(0.5) / ln(&lambda;)</div>
 
@@ -80,18 +80,17 @@ the intuitive handle:
 | 0.99 | 69 days | 69 weeks |
 
 &lambda; = 0.94 is RiskMetrics' original daily parameter and has become a
-convention. It is not sacred &mdash; it was fitted to 1990s data. Use it as a
-starting point, not an answer.
+convention. It was fitted to 1990s data, so treat it as a starting point.
 
-## Building it in Excel: one trick
+## Building it in Excel
 
-This looks harder than the sample covariance. It is not, because of one
-rearrangement.
+This looks harder than the sample covariance, but one rearrangement makes it
+straightforward.
 
-You want a weighted sum of outer products. But note that scaling **row t** of your
-demeaned return matrix by &radic;w<sub>t</sub> and then forming R&prime;R gives
-exactly the weighted sum &mdash; because each term of the product picks up
-&radic;w<sub>t</sub> twice.
+You want a weighted sum of outer products. Scaling **row t** of your return
+matrix by &radic;w<sub>t</sub> and then forming R&prime;R gives exactly that
+weighted sum, because each term of the product picks up &radic;w<sub>t</sub>
+twice.
 
 So the recipe is:
 
@@ -119,8 +118,7 @@ So the recipe is:
     ```
     =MMULT(TRANSPOSE(ScaledW!B2:CD1115), ScaledW!B2:CD1115)
     ```
-    One cell changes &lambda; and the entire risk model updates. That is worth
-    the setup.
+    Changing &lambda; in one cell then updates the whole model.
 
 !!! tip "A convention you should know"
     RiskMetrics does **not** demean returns before computing EWMA covariance: it
@@ -131,26 +129,25 @@ So the recipe is:
     1.3% &mdash; inside the checker tolerance, but closer to the edge than you
     want, so if an EWMA check is refusing you, that is the first thing to look at.
 
-## The exercise that makes the point
+## Watching it through the crises
 
 Compute your portfolio's EWMA volatility at each week-end through the sample and
 chart it. Overlay a rolling 104-week sample volatility.
 
 You should see:
 
-- **September 2008.** EWMA vaults upward within weeks. The rolling window climbs
-  slowly, still diluted by four years of calm.
+- **September 2008.** EWMA vaults upward within weeks. The rolling window climbs slowly,
+  because four years of calm are still in it.
 - **2009&ndash;2010.** EWMA falls back quickly as markets settle. The rolling
-  window stays elevated far longer &mdash; 2008 is still inside it.
+  window stays elevated for much longer, because 2008 is still inside it.
 - **March 2020.** The sharpest move in the sample. EWMA(0.94) roughly doubles in
   a month.
-- **September 2022.** The gilt and LDI crisis, which is worth dwelling on given
-  where you work &mdash; and which is *not* what most people expect. Aggregate
-  equity volatility barely moved: EWMA(0.94) averaged 15.1% over September and
-  October against 14.8% for a rolling 104-week window. It was a gilt crisis, not
-  an equity crisis.
+- **September 2022.** The gilt and LDI crisis, which is particularly relevant
+  given where you work. Aggregate equity volatility barely moved: EWMA(0.94)
+  averaged 15.1% over September and October, against 14.8% for a rolling
+  104-week window. The stress was concentrated in the gilt market.
 
-    The sector detail is the interesting part. Daily volatility in those two
+    The sector detail shows where it did appear. Daily volatility in those two
     months, as a multiple of the same names' calm-2022 volatility:
 
     | Industry | Multiple |
@@ -161,31 +158,28 @@ You should see:
     | Basic Materials | 0.90 |
     | Energy | 0.74 |
 
-    So it hit **rate-sensitive** equity, not financial equity. Real estate and
-    utilities are long-duration assets &mdash; bond proxies &mdash; and a violent
-    move in gilt yields repriced them hard. Banks, which earn more as rates rise,
-    did not budge. If your instinct was "financial crisis, so banks", this is a
-    useful correction: ask what the shock actually transmits *through*.
+    The effect was concentrated in **rate-sensitive** sectors. Real estate and
+    utilities are long-duration assets that behave partly like bonds, and the
+    move in gilt yields repriced them. Banks, which earn more as rates rise,
+    barely moved. It is a useful reminder to ask how a shock is transmitted
+    before assuming which sectors it will affect.
 
 - **The one-year anniversary problem.** Watch a rolling 52-week estimate through
-  early 2021. On 24 February it reads **34.5%**; five weeks later, on 31 March,
-  **21.1%**. Nothing happened in the market. The Covid crash simply left the
-  window.
+  early 2021. On 24 February it reads **34.5%**; five weeks later, on 31 March, it
+  reads **21.1%**. The drop is caused by the Covid crash leaving the window.
 
-    EWMA(0.94) over the identical weeks goes 21.8% to 18.8%. A 3 point drift
-    against a 13 point cliff.
+    EWMA(0.94) over the same weeks goes from 21.8% to 18.8%, a fall of 3 points
+    compared with 13.
 
-    This is a genuine operational headache, not a curiosity: the number moves,
-    a portfolio manager asks why, and the honest answer is "because of a date".
-    Being able to say that clearly, and to have the EWMA comparison ready, is
-    most of the job.
+    This causes practical problems: the number moves, a portfolio manager asks
+    why, and the honest answer is "because of a date". It helps to be able to explain
+    this, and to have the EWMA comparison to hand.
 
-EWMA does not have that problem. Old observations fade rather than falling off a
-ledge. That is the real argument for it.
+EWMA avoids this, because old observations fade gradually instead of falling off a ledge. That is one of the main reasons to use it.
 
 ## What to take away
 
-1. Quote a volatility without stating its window and you have said nothing.
-2. Short windows react; long windows remember. Choose deliberately.
-3. EWMA gets responsiveness without the anniversary cliff.
-4. &lambda; = 0.94 is a convention, not a law.
+1. Always state the window when you quote a volatility.
+2. Short windows react; long windows remember.
+3. EWMA responds quickly without the anniversary effect.
+4. &lambda; = 0.94 is a convention, and you can change it.

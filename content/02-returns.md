@@ -6,17 +6,17 @@ summary: Three frequencies, log versus simple, and why annualising daily vol doe
 time: 60 min
 ---
 
-Now the arithmetic starts. You are going to build three return series from one
-price series, annualise all three, and then explain why they disagree.
+This module starts the calculations. You are going to build three return series
+from one price series, annualise all three, and then look at why they disagree.
 
 !!! excel "The file you need from here on"
     Work from the **[core workbook](/download/workbook?dataset=core)** &mdash; 81
     names, 2005 onwards, already screened and trimmed to a complete rectangle
     with no gaps.
 
-    This is the same data you were picking over in Module 1, after the decisions
+    This is the same data you were working with in Module 1, after the decisions
     you just made have been applied. Everyone uses this file from now on, so that
-    everyone's numbers agree. The ragged raw file has done its job.
+    everyone's numbers agree.
 
 ## Simple or log?
 
@@ -36,8 +36,8 @@ Both are defensible. The rule of thumb on this desk:
   property &mdash; the log return of a portfolio is not the weighted average of
   log returns.
 
-Since a covariance matrix exists to be squeezed by a weight vector, and weights
-aggregate across assets, **we use simple returns throughout**. Build both if you
+Because a covariance matrix is used together with portfolio weights, and weights
+combine across assets, **we use simple returns throughout**. Build both if you
 like; over daily horizons they differ in the fourth decimal place.
 
 !!! excel "Doing it in Excel"
@@ -51,15 +51,14 @@ like; over daily horizons they differ in the fourth decimal place.
     =Prices!B3:CD5407/Prices!B2:CD5406-1
     ```
 
-    **Label your `ReturnsD` tab properly.** Two things, and both will save you
-    from a bug later:
+    **Label your `ReturnsD` tab.** Two things will help avoid bugs later:
 
-    - A **date column** down the left. You will need it constantly &mdash; for
-      filtering to Wednesdays, for cutting windows, for finding a crisis.
+    - A **date column** down the left. You will need it for filtering to
+      Wednesdays, cutting windows, and finding particular crises.
     - A **top row of tickers**, copied across from the `Prices` tab. When you
       later feed a returns block into a covariance matrix and then multiply by a
-      weight vector, everything depends on the columns being in the order you
-      think they are. Labels are how you check.
+      weight vector, the columns need to be in the order you think they are, and
+      labels let you check that.
 
     **On dates:** conventionally a daily return is labelled with its **end**
     date. The return from Monday's close to Tuesday's close is Tuesday's return,
@@ -67,9 +66,8 @@ like; over daily horizons they differ in the fourth decimal place.
     against the **second** date in the price file, not the first, and your
     `ReturnsD` tab has exactly one row fewer than `Prices`.
 
-    That sounds obvious written down. It is also the single most common way to
-    end up one row out, which puts every stock's returns against the wrong date
-    and quietly wrecks every correlation in the model.
+    It is easy to end up one row out, which puts returns against the wrong dates
+    and distorts every correlation in the model.
 
 ## Weekly: use Wednesdays
 
@@ -77,10 +75,10 @@ Do not just take every fifth row. Sample **Wednesday closing prices**, then take
 returns of that series.
 
 The reason is the one from Module 1: UK market holidays cluster on Mondays and
-Fridays &mdash; Good Friday, Easter Monday, May Day, the spring and August bank
-holidays. A Friday-anchored week is regularly a four-day week pretending to be a
-five-day one, which puts a lumpy, seasonal error straight into your variance.
-Wednesday is the quietest day of the UK week.
+Fridays &mdash; Good Friday, Easter Monday, May Day, and the spring and August
+bank holidays. A Friday-to-Friday week is regularly only four trading days long,
+which adds a seasonal error to your variance. Wednesday is the day least affected
+by UK holidays.
 
 !!! excel "Getting Wednesdays"
     **Route one: filter the rows you have.** Add a helper column next to your
@@ -99,15 +97,15 @@ Wednesday is the quietest day of the UK week.
     ```
     =A2+7
     ```
-    and fill down. You now have a clean weekly calendar that owes nothing to
-    what happens to be in the price file.
+    and fill down. This gives you a regular weekly calendar that does not depend
+    on which dates appear in the price file.
 
     Route two leaves you needing to pull a price for each of those dates, and
-    some of them will be bank holidays with no row in the file. The answer is
-    an approximate-match **`VLOOKUP`**, which snaps each grid date onto the last
-    real trading day at or before it. See *Snapping a date grid onto real
-    trading days*, further down this page &mdash; it works identically for
-    weekly and monthly.
+    some of them will be bank holidays with no row in the file. An
+    approximate-match **`VLOOKUP`** handles this by snapping each grid date onto
+    the last trading day at or before it. See *Snapping a date grid onto real
+    trading days*, further down this page; it works the same way for weekly and
+    monthly.
 
 ## Monthly: use month ends
 
@@ -129,41 +127,36 @@ put a start date in a cell, then below it:
 =EOMONTH(A2,1)
 ```
 
-and fill down, for a clean series of month ends.
+and fill down, for a series of month ends.
 
-The catch is that the last *calendar* day of a month is rarely a *trading* day.
-31 August is a bank holiday about one year in seven; 25 December never trades.
-So you have a grid of dates, some of which have no row in the price file.
+However, the last *calendar* day of a month is often not a *trading* day.
+31 August is a bank holiday about one year in seven, and 25 December never
+trades. So some of the dates in your grid will have no row in the price file.
 
 !!! excel "Snapping a date grid onto real trading days"
-    This is the trick worth learning, and it solves the weekly and monthly cases
-    identically.
+    This works the same way for weekly and monthly grids.
 
     `VLOOKUP` with its fourth argument set to `TRUE` does an **approximate**
     match: on a column sorted ascending, it returns the row with the largest
-    value **less than or equal to** your lookup date. Which is exactly the
-    behaviour you want &mdash; "give me the last trading day at or before this
-    date."
+    value **less than or equal to** your lookup date. That gives you the last
+    trading day on or before the date.
 
-    With your grid dates down column A and your tickers along row 1 (that top
-    row of tickers from earlier now earns its keep):
+    With your grid dates down column A and your tickers along row 1 (the top row of tickers from earlier now earns its keep):
     ```
     =VLOOKUP($A2, Prices!$A:$CD, MATCH(B$1, Prices!$A$1:$CD$1, 0), TRUE)
     ```
-    Drag it across and down. Every bank holiday silently resolves to the
-    previous trading day, which is the convention you want, and you never have
-    to special-case Good Friday.
+    Drag it across and down. Each bank holiday resolves to the previous trading
+    day, so you do not need to handle Good Friday separately.
 
-    Three things that will bite you:
+    Three things to watch for:
 
     - The lookup column **must be sorted ascending**. Dates in the price file
-      are, but if you have re-sorted anything, `TRUE` will return confident
-      nonsense rather than an error.
+      are, but if you have re-sorted anything, `TRUE` returns confident nonsense rather than an error.
     - A grid date **before** the first row of prices gives `#N/A`. Start your
       grid inside the sample.
-    - It snaps **backwards**, always. A grid date after your last price returns
-      the last price you have, rather than an error, which will quietly flatten
-      the most recent return to zero. Stop the grid at your final date.
+    - It always snaps **backwards**. A grid date after your last price returns
+      the last price you have, rather than an error, which sets the most recent
+      return to zero. Stop the grid at your final date.
 
     **Bonus marks** if you work out `XLOOKUP` as well. Its fifth argument is a
     match mode, and `-1` means "exact match, or the next smaller item" &mdash;
@@ -197,17 +190,17 @@ With 252 trading days, 52 weeks and 12 months:
 | Weekly | &radic;52 &asymp; 7.21 |
 | Monthly | &radic;12 &asymp; 3.46 |
 
-Note it is the **volatility** that scales with &radic;T, because **variance**
-scales with T. Variance is additive over independent periods; standard deviation
-is not. If you ever find yourself multiplying a volatility by 252, stop.
+It is the **volatility** that scales with &radic;T, because **variance** scales
+with T. Variance adds up over independent periods; standard deviation does not.
+If you ever find yourself multiplying a volatility by 252, stop.
 
 !!! excel "The calculation"
     ```
     =STDEV.S(ReturnsD!B2:B5406) * SQRT(252)
     ```
     Use `STDEV.S` (sample, divides by n&minus;1), not `STDEV.P`. With thousands of
-    observations it makes no practical difference, but the sample estimator is
-    what everyone else means, and matching convention matters more than you think.
+    observations it makes little practical difference, but the sample estimator
+    is the convention everyone else uses.
 
     Some particularly ancient members of the team still insist on plain
     `STDEV`, which is ambiguous about which one it means. Excel quietly covers
@@ -220,32 +213,31 @@ is not. If you ever find yourself multiplying a volatility by 252, stop.
     expressing a strong opinion on the matter is a career decision rather than a
     technical one.
 
-## Now the interesting bit: they will not agree
+## Now the interesting bit: why they disagree
 
 Compute the annualised volatility of your assigned stock three ways. You will get
-three different numbers &mdash; typically the daily figure highest and the monthly
+three different numbers, typically with the daily figure highest and the monthly
 lowest, often by two or three percentage points.
 
-This is not an error in your spreadsheet. The &radic;T rule assumes returns are
-**independent and identically distributed**. Real returns are not:
+This is expected. The &radic;T rule assumes returns are **independent and
+identically distributed**, and real returns are not:
 
 - **Negative autocorrelation at short horizons.** Bid-ask bounce and
   over-reaction mean a down day is slightly more likely to be followed by an up
   day. Sum the variance over a week and the cross terms are negative, so the week
   is less volatile than 5 &times; a day. Scaling daily vol up therefore
   *overstates* weekly risk.
-- **Volatility clustering.** Calm begets calm, crisis begets crisis. Returns are
-  not identically distributed through time at all.
+- **Volatility clustering.** Calm begets calm, and crisis begets crisis, so returns are not identically distributed through time.
 - **Fewer observations.** Your monthly series has around 250 points against
   5,400 daily. The standard error of a volatility estimate is roughly
-  &sigma;/&radic;(2T), so the monthly estimate is simply noisier.
+  &sigma;/&radic;(2T), so the monthly estimate is noisier.
 
 !!! tip "The practitioner's answer"
     Match the estimation frequency to your decision horizon. If you rebalance
     monthly, monthly returns describe your risk best, whatever the daily number
-    says. Most equity risk models use weekly as the compromise: enough
-    observations to estimate a large covariance matrix, long enough to shed most
-    of the microstructure noise.
+    says. Most equity risk models use weekly as a compromise: enough
+    observations to estimate a large covariance matrix, and long enough to avoid
+    most of the microstructure noise.
 
 Run the same comparison on a high-beta bank and on a utility. The gap between
 daily and monthly is usually wider for the bank. Ask yourself why.
