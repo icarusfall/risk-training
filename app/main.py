@@ -6,18 +6,22 @@ Route map:
     /check/{check_id}     POST an answer, get graded
     /data                 what we downloaded, what we cleaned, what we dropped
     /download/{key}       CSVs and the starter workbook
-    /login, /auth/{tok}   passwordless sign-in
+    /login, /signup       email-and-password accounts, set up by emailed link
+    /password/forgot      ask for a link to set or reset a password
+    /account/...          choose or change a password
+    /auth/{tok}           legacy magic links, honoured until they expire
     /admin                joiners, progress, canary events
     plus the bait paths in canary.py
 """
 from __future__ import annotations
 
-import json
+import hashlib
+import hmac
 import logging
 import time
-from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import (HTMLResponse, JSONResponse, PlainTextResponse,
@@ -28,7 +32,7 @@ from itsdangerous import BadSignature, URLSafeSerializer
 
 import pandas as pd
 
-from . import canary, checks, config, content, db, mail
+from . import canary, checks, config, content, db, mail, passwords
 from .data import datasets, descriptions, exports, store
 
 logging.basicConfig(level=logging.INFO,
@@ -77,20 +81,63 @@ templates = Jinja2Templates(directory=str(BASE / "templates"))
 
 _signer = URLSafeSerializer(config.SECRET_KEY, salt="session")
 COOKIE = "rt_session"
+_BASE = urlparse(config.BASE_URL)
+
+
+@app.middleware("http")
+async def canonical_host_and_headers(request: Request, call_next):
+    """Send visitors on any other hostname to BASE_URL, and add two cheap
+    security headers.
+
+    A single hostname matters for more than tidiness: session cookies belong
+    to one host, and setup emails link to BASE_URL, so somebody signed in on
+    the Railway name would look signed out on the real one. /healthz is exempt
+    because Railway's health check does not come in on the public domain.
+    """
+    host = (request.headers.get("host") or "").lower()
+    if (config.REDIRECT_TO_BASE_URL and _BASE.netloc and host
+            and host != _BASE.netloc.lower() and request.url.path != "/healthz"):
+        target = config.BASE_URL.rstrip("/") + request.url.path
+        if request.url.query:
+            target += "?" + request.url.query
+        return RedirectResponse(target, status_code=301 if request.method in ("GET", "HEAD") else 308)
+    response = await call_next(request)
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    return response
 
 
 # --------------------------------------------------------------------------- #
 # auth helpers
 # --------------------------------------------------------------------------- #
+def _session_version(user: dict) -> str:
+    """Changes whenever the password does, so setting or changing a password
+    signs out every other browser. Empty for an account with no password yet,
+    which is what keeps cookies issued before passwords existed working."""
+    h = user.get("password_hash") or ""
+    return hashlib.sha256(h.encode()).hexdigest()[:16] if h else ""
+
+
+def _public(user: dict) -> dict:
+    """The user as handlers and templates see it: no password hash."""
+    out = {k: v for k, v in user.items() if k != "password_hash"}
+    out["has_password"] = bool(user.get("password_hash"))
+    return out
+
+
 def current_user(request: Request) -> dict | None:
     raw = request.cookies.get(COOKIE)
     if not raw:
         return None
     try:
-        uid = _signer.loads(raw)["uid"]
-    except (BadSignature, KeyError, TypeError):
+        data = _signer.loads(raw)
+        uid, sv = int(data["uid"]), str(data.get("sv", ""))
+    except (BadSignature, KeyError, TypeError, ValueError, AttributeError):
         return None
-    return db.get_user(int(uid))
+    user = db.get_user(uid)
+    if not user or not hmac.compare_digest(sv, _session_version(user)):
+        return None
+    return _public(user)
 
 
 def require_user(request: Request) -> dict:
@@ -101,7 +148,8 @@ def require_user(request: Request) -> dict:
 
 
 def _set_session(resp: Response, user: dict) -> None:
-    resp.set_cookie(COOKIE, _signer.dumps({"uid": user["id"]}),
+    """`user` must be the database row, hash included, so the version matches."""
+    resp.set_cookie(COOKIE, _signer.dumps({"uid": user["id"], "sv": _session_version(user)}),
                     httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30,
                     secure=config.BASE_URL.startswith("https"))
 
@@ -119,7 +167,8 @@ def _ctx(request: Request, **kw) -> dict:
             "age_hours": store.age_hours(), "stale": store.is_stale(),
             "modules": content.list_modules(), "bait_notice": canary.BAIT_NOTICE,
             "datasets": datasets.DATASETS, "admin_name": config.ADMIN_NAME,
-            "link_mode": config.LOGIN_LINK_RECIPIENT, **kw}
+            "signup_enabled": config.SIGNUP_ENABLED,
+            "allowed_domains": config.SIGNUP_ALLOWED_DOMAINS, **kw}
 
 
 # --------------------------------------------------------------------------- #
@@ -288,69 +337,254 @@ def download(key: str, request: Request, dataset: str = datasets.DEFAULT_DATASET
 # --------------------------------------------------------------------------- #
 # auth
 # --------------------------------------------------------------------------- #
-@app.get("/login", response_class=HTMLResponse)
-def login_form(request: Request, sent: str = ""):
-    return templates.TemplateResponse(request, "login.html", _ctx(request, sent=sent))
+# How long each kind of emailed link works for, in hours.
+SIGNUP_HOURS = 48           # someone signing themselves up
+INVITE_HOURS = 24 * 7       # the admin setting someone up, or moving a joiner onto passwords
+RESET_HOURS = 3             # a forgotten password
+
+# Throttles, all counted from the events table, so they survive a restart and
+# need nothing extra running.
+EMAIL_COOLDOWN_MIN = 5      # at most one emailed link per address in this window
+EMAILS_PER_IP_PER_HOUR = 10
+LOGIN_LOCK_MIN = 15
+LOGIN_FAILS_PER_EMAIL = 5
+LOGIN_FAILS_PER_IP = 30
 
 
-# At most one email per address in this window, so a keen refresher or a
-# curious visitor cannot fill the admin's inbox.
-LOGIN_EMAIL_COOLDOWN_MIN = 10
+def _norm_email(email: str) -> str:
+    return (email or "").strip().lower()[:254]
 
 
-def _recently_requested(email: str) -> bool:
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=LOGIN_EMAIL_COOLDOWN_MIN)
-    for e in db.recent_events(["login_requested"], limit=200):   # newest first
-        if datetime.fromisoformat(e["created_at"]) < cutoff:
-            break
-        try:
-            if json.loads(e["detail"] or "{}").get("email") == email:
-                return True
-        except ValueError:
-            continue
-    return False
+def _looks_like_email(email: str) -> bool:
+    local, _, domain = email.partition("@")
+    return bool(local) and "." in domain and " " not in email
 
 
-@app.post("/login")
-def login_submit(request: Request, email: str = Form(...)):
-    """Request a login link.
-
-    With LOGIN_LINK_RECIPIENT=admin (the default) the link is emailed to the
-    admin to forward, and an unregistered address produces a short access
-    request instead. With "user" it goes straight to the joiner.
-    """
-    email = email.strip().lower()
-    user = db.get_user_by_email(email)
-    if not _recently_requested(email):
-        db.log_event("login_requested", user_id=(user or {}).get("id"),
-                     detail={"email": email, "registered": bool(user)},
-                     ip=client_ip(request), user_agent=request.headers.get("user-agent"))
-        if user:
-            url = f"{config.BASE_URL}/auth/{db.issue_token(user['id'])}"
-            if config.LOGIN_LINK_RECIPIENT == "user":
-                mail.send_magic_link(user["email"], user["name"], url)
-            else:
-                mail.send_login_link_to_admin(user["email"], user["name"], url)
-        elif config.LOGIN_LINK_RECIPIENT != "user":
-            mail.send_access_request_to_admin(email)
-    # Same response whatever happened, so the form cannot be used to find out
-    # who is registered.
-    return RedirectResponse("/login?sent=1", status_code=303)
+def _setup_url(token: str) -> str:
+    return f"{config.BASE_URL}/account/setup/{token}"
 
 
-@app.get("/auth/{token}")
-def auth(request: Request, token: str):
-    user = db.redeem_token(token)
-    if not user:
-        return templates.TemplateResponse(
-            request, "login.html",
-            _ctx(request, error="That link has expired. Ask for another."),
-            status_code=400)
-    resp = RedirectResponse("/", status_code=303)
+def _may_email(email: str, ip: str) -> bool:
+    """One link per address every few minutes, and a ceiling per IP, so the
+    forms cannot be used to fill somebody's inbox."""
+    if db.count_events(["auth_request"], EMAIL_COOLDOWN_MIN, email=email):
+        return False
+    if ip and db.count_events(["auth_request"], 60, ip=ip) >= EMAILS_PER_IP_PER_HOUR:
+        return False
+    return True
+
+
+def _login_locked(email: str, ip: str) -> bool:
+    if db.count_events(["login_failed"], LOGIN_LOCK_MIN, email=email) >= LOGIN_FAILS_PER_EMAIL:
+        return True
+    return bool(ip) and db.count_events(["login_failed"], LOGIN_LOCK_MIN, ip=ip) >= LOGIN_FAILS_PER_IP
+
+
+def _sign_in(request: Request, user: dict, to: str = "/") -> RedirectResponse:
+    resp = RedirectResponse(to, status_code=303)
     _set_session(resp, user)
     db.log_event("login", user_id=user["id"], ip=client_ip(request),
                  user_agent=request.headers.get("user-agent"))
     return resp
+
+
+def _private(resp: Response) -> Response:
+    """For pages whose URL carries a token: keep it out of Referer headers and caches."""
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_form(request: Request):
+    if current_user(request):
+        return RedirectResponse("/", status_code=303)
+    return templates.TemplateResponse(request, "login.html", _ctx(request))
+
+
+@app.post("/login")
+def login_submit(request: Request, email: str = Form(...), password: str = Form(...)):
+    email, ip = _norm_email(email), client_ip(request)
+
+    def fail(message: str, status: int):
+        return templates.TemplateResponse(request, "login.html",
+                                          _ctx(request, error=message, email=email),
+                                          status_code=status)
+
+    if _login_locked(email, ip):
+        return fail(f"Too many attempts. Wait {LOGIN_LOCK_MIN} minutes, or set a new "
+                    "password with the link below.", 429)
+    user = db.get_user_by_email(email)
+    if user and user.get("password_hash") and len(password) <= passwords.MAX_LENGTH:
+        ok = passwords.verify_password(password, user["password_hash"])
+    else:
+        passwords.burn_time(password)       # same delay whether or not the account exists
+        ok = False
+    if not ok:
+        db.log_event("login_failed", user_id=(user or {}).get("id"), detail={"email": email},
+                     ip=ip, user_agent=request.headers.get("user-agent"))
+        return fail("That email and password do not match. If you used the site before "
+                    "it had passwords, use the link below to set one.", 400)
+    return _sign_in(request, user)
+
+
+@app.get("/signup", response_class=HTMLResponse)
+def signup_form(request: Request):
+    return templates.TemplateResponse(request, "signup.html", _ctx(request))
+
+
+@app.post("/signup")
+def signup_submit(request: Request, email: str = Form(...), name: str = Form("")):
+    """Start an account. Nothing is created until the emailed link is used, so
+    an address typed by mistake, or by somebody else, leaves no account behind."""
+    email, ip, name = _norm_email(email), client_ip(request), name.strip()[:100]
+
+    def form_error(message: str, status: int = 400):
+        return templates.TemplateResponse(request, "signup.html",
+                                          _ctx(request, error=message, email=email, name=name),
+                                          status_code=status)
+
+    if not config.SIGNUP_ENABLED:
+        return form_error(f"Sign-up is closed at the moment. Ask {config.ADMIN_NAME} to add you.", 403)
+    if not _looks_like_email(email):
+        return form_error("That does not look like an email address.")
+    if config.SIGNUP_ALLOWED_DOMAINS and email.rpartition("@")[2] not in config.SIGNUP_ALLOWED_DOMAINS:
+        return form_error("Sign-up is open to addresses at "
+                          + ", ".join(config.SIGNUP_ALLOWED_DOMAINS) + " only.")
+    if _may_email(email, ip):
+        db.log_event("auth_request", detail={"email": email, "purpose": "signup"},
+                     ip=ip, user_agent=request.headers.get("user-agent"))
+        user = db.get_user_by_email(email)
+        if user:
+            # Already registered: send a way back in rather than an error, so
+            # the form does not reveal who has an account.
+            tok = db.issue_auth_token("reset", email, user["name"], user["id"], RESET_HOURS)
+            mail.send_setup_link(email, user["name"], _setup_url(tok), "existing", RESET_HOURS)
+        else:
+            tok = db.issue_auth_token("signup", email, name, None, SIGNUP_HOURS)
+            mail.send_setup_link(email, name, _setup_url(tok), "signup", SIGNUP_HOURS)
+    return RedirectResponse("/check-email?what=signup", status_code=303)
+
+
+@app.get("/password/forgot", response_class=HTMLResponse)
+def forgot_form(request: Request):
+    return templates.TemplateResponse(request, "forgot.html", _ctx(request))
+
+
+@app.post("/password/forgot")
+def forgot_submit(request: Request, email: str = Form(...)):
+    """Also the way in for joiners who predate passwords. Same response whether
+    or not the address has an account."""
+    email, ip = _norm_email(email), client_ip(request)
+    if _looks_like_email(email) and _may_email(email, ip):
+        db.log_event("auth_request", detail={"email": email, "purpose": "reset"},
+                     ip=ip, user_agent=request.headers.get("user-agent"))
+        user = db.get_user_by_email(email)
+        if user:
+            tok = db.issue_auth_token("reset", email, user["name"], user["id"], RESET_HOURS)
+            mail.send_setup_link(email, user["name"], _setup_url(tok), "reset", RESET_HOURS)
+    return RedirectResponse("/check-email?what=reset", status_code=303)
+
+
+@app.get("/check-email", response_class=HTMLResponse)
+def check_email(request: Request, what: str = "reset"):
+    return templates.TemplateResponse(request, "check_email.html", _ctx(request, what=what))
+
+
+def _setup_page(request: Request, row: dict | None, token: str, status: int = 200, **kw):
+    ctx = _ctx(request, mode="setup", action=f"/account/setup/{token}",
+               email=(row or {}).get("email", ""), expired=row is None, **kw)
+    return _private(templates.TemplateResponse(request, "set_password.html", ctx,
+                                               status_code=status))
+
+
+@app.get("/account/setup/{token}", response_class=HTMLResponse)
+def setup_form(request: Request, token: str):
+    """Show the form without using the link up. Corporate mail filters open
+    links to scan them, and a link that died on first view would be dead before
+    the joiner ever clicked it."""
+    row = db.get_auth_token(token)
+    return _setup_page(request, row, token, status=200 if row else 400)
+
+
+@app.post("/account/setup/{token}")
+def setup_submit(request: Request, token: str, password: str = Form(...),
+                 confirm: str = Form(...)):
+    row = db.get_auth_token(token)
+    if not row:
+        return _setup_page(request, None, token, status=400)
+    problem = passwords.problem_with(password, row["email"])
+    if not problem and password != confirm:
+        problem = "The two passwords do not match."
+    if problem:
+        return _setup_page(request, row, token, status=400, error=problem)
+
+    user = db.get_user(row["user_id"]) if row["user_id"] else db.get_user_by_email(row["email"])
+    created = False
+    if not user:
+        if row["purpose"] != "signup":      # the account was deleted after the link went out
+            return _setup_page(request, None, token, status=400)
+        user = db.create_user(row["email"], row["name"])
+        created = True
+    user = db.set_password(user["id"], passwords.hash_password(password))
+    db.consume_auth_tokens(row["email"])
+    db.log_event("password_set", user_id=user["id"],
+                 detail={"via": row["purpose"], "new_account": created},
+                 ip=client_ip(request), user_agent=request.headers.get("user-agent"))
+    if created:
+        mail.send_new_signup_to_admin(user["email"], user["name"])
+    return _private(_sign_in(request, user))
+
+
+def _password_page(request: Request, user: dict, status: int = 200, **kw):
+    return templates.TemplateResponse(request, "set_password.html", _ctx(
+        request, user=user, mode="change", action="/account/password",
+        email=user["email"], needs_current=user["has_password"], **kw), status_code=status)
+
+
+@app.get("/account/password", response_class=HTMLResponse)
+def account_password_form(request: Request, welcome: str = "", done: str = ""):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    return _password_page(request, user, welcome=welcome, done=done)
+
+
+@app.post("/account/password")
+def account_password_submit(request: Request, password: str = Form(...),
+                            confirm: str = Form(...), current_password: str = Form("")):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    raw = db.get_user(user["id"])
+    if raw.get("password_hash") and not passwords.verify_password(current_password,
+                                                                  raw["password_hash"]):
+        return _password_page(request, user, 400, error="Your current password is not right.")
+    problem = passwords.problem_with(password, raw["email"])
+    if not problem and password != confirm:
+        problem = "The two passwords do not match."
+    if problem:
+        return _password_page(request, user, 400, error=problem)
+    raw = db.set_password(raw["id"], passwords.hash_password(password))
+    db.consume_auth_tokens(raw["email"])
+    db.log_event("password_set", user_id=raw["id"], detail={"via": "account"},
+                 ip=client_ip(request), user_agent=request.headers.get("user-agent"))
+    resp = RedirectResponse("/account/password?done=1", status_code=303)
+    _set_session(resp, raw)
+    return resp
+
+
+@app.get("/auth/{token}")
+def legacy_link(request: Request, token: str):
+    """Sign-in links from before passwords, honoured until they expire. They
+    lead straight to choosing a password."""
+    user = db.redeem_token(token)
+    if not user:
+        return templates.TemplateResponse(request, "login.html", _ctx(
+            request, error="That sign-in link has expired. The site now uses passwords: "
+                           "use the link below to set yours."), status_code=400)
+    return _sign_in(request, user,
+                    "/" if user.get("password_hash") else "/account/password?welcome=1")
 
 
 @app.get("/logout")
@@ -428,16 +662,30 @@ def _admin_page(request: Request, token: str, **extra):
     """Render /admin. Shared so POST handlers can show a result without a
     redirect - a magic-link token has no business sitting in the URL bar or in
     browser history."""
-    users = db.list_users()
-    for u in users:
+    users = []
+    for raw in db.list_users():
+        u = _public(raw)
         p = db.progress(u["id"])
         u["solved"] = sum(1 for v in p.values() if v["solved"])
         u["total"] = len(checks.CHECKS)
+        users.append(u)
     return templates.TemplateResponse(request, "admin.html", _ctx(
         request, users=users, token=token,
+        n_without_password=sum(1 for u in users if not u["has_password"]),
         events=db.recent_events(["canary", "shortcut", "cadence"], limit=60),
-        activity=db.recent_events(["login", "download"], limit=40),
+        activity=db.recent_events(["login", "download", "password_set"], limit=40),
         base_url=config.BASE_URL, **extra))
+
+
+def _invite(user: dict) -> dict:
+    """Email a seven-day link to choose a password, and hand the link back so
+    it can be passed on by hand if the email does not arrive."""
+    tok = db.issue_auth_token("invite", user["email"], user["name"], user["id"], INVITE_HOURS)
+    url = _setup_url(tok)
+    sent = mail.send_setup_link(user["email"], user["name"], url, "invite", INVITE_HOURS)
+    db.log_event("invite_sent", user_id=user["id"], detail={"email": user["email"], "sent": sent})
+    return {"email": user["email"], "name": user["name"], "url": url, "emailed": sent,
+            "days": INVITE_HOURS // 24}
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -451,33 +699,29 @@ def admin_add(request: Request, email: str = Form(...), name: str = Form(""),
               token: str = Form("")):
     require_admin(request, token)
     user = db.create_user(email, name)
-    link = f"{config.BASE_URL}/auth/{db.issue_token(user['id'])}"
-    sent = False
-    if config.LOGIN_LINK_RECIPIENT == "user":
-        sent = mail.send_magic_link(user["email"], user["name"], link)
-    if not sent:
-        log.info("Magic link for %s: %s", user["email"], link)
-    return _admin_page(request, token, new_link={
-        "email": user["email"], "name": user["name"], "url": link, "emailed": sent,
-        "mode": config.LOGIN_LINK_RECIPIENT})
+    return _admin_page(request, token, new_link=_invite(user))
 
 
-@app.post("/admin/relink")
-def admin_relink(request: Request, user_id: int = Form(...), token: str = Form("")):
-    """Issue a fresh 72-hour link for an existing joiner."""
+@app.post("/admin/setup-link")
+def admin_setup_link(request: Request, user_id: int = Form(...), token: str = Form("")):
+    """Send one joiner a fresh link to choose a password."""
     require_admin(request, token)
     user = db.get_user(user_id)
     if not user:
         raise HTTPException(404, "no such joiner")
-    link = f"{config.BASE_URL}/auth/{db.issue_token(user['id'])}"
-    sent = False
-    if config.LOGIN_LINK_RECIPIENT == "user":
-        sent = mail.send_magic_link(user["email"], user["name"], link)
-    if not sent:
-        log.info("Magic link for %s: %s", user["email"], link)
-    return _admin_page(request, token, new_link={
-        "email": user["email"], "name": user["name"], "url": link, "emailed": sent,
-        "mode": config.LOGIN_LINK_RECIPIENT})
+    return _admin_page(request, token, new_link=_invite(user))
+
+
+@app.post("/admin/invite-all")
+def admin_invite_all(request: Request, token: str = Form("")):
+    """Email a setup link to every account that has no password yet: the way
+    to move joiners from before passwords across in one go."""
+    require_admin(request, token)
+    results = [_invite(u) for u in db.users_without_password()]
+    return _admin_page(request, token, invite_summary={
+        "sent": [r["email"] for r in results if r["emailed"]],
+        "failed": [r["email"] for r in results if not r["emailed"]],
+        "days": INVITE_HOURS // 24})
 
 
 @app.post("/admin/refresh")

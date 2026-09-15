@@ -6,21 +6,15 @@
 {% if new_link %}
 <div class="card" style="background:var(--sage-wash);border-color:#CFE0C8">
   <h3 style="margin-top:0">
-    Link for {{ new_link.name or new_link.email }}
+    Setup link for {{ new_link.name or new_link.email }}
     {% if new_link.emailed %}<span class="pill good">emailed</span>
-    {% else %}<span class="pill warn">not emailed &mdash; forward it yourself</span>{% endif %}
+    {% else %}<span class="pill warn">not emailed &mdash; send it yourself</span>{% endif %}
   </h3>
   {% if not new_link.emailed %}
   <p style="margin-bottom:.6rem;font-size:.92rem">
-    {% if new_link.mode == 'user' %}
-    Delivery to <code>{{ new_link.email }}</code> failed, so copy the link below
-    and send it on yourself.
-    {% else %}
-    Links are not emailed to joiners at the moment
-    (<code>LOGIN_LINK_RECIPIENT=admin</code>), so copy the link below and send it
-    on. Joiners can also request a fresh link from the sign-in page, which emails
-    it to you to forward.
-    {% endif %}
+    The email to <code>{{ new_link.email }}</code> did not go out (check
+    <code>RESEND_API_KEY</code>, <code>MAIL_FROM</code> and the domain in Resend),
+    so copy the link below and pass it on.
   </p>
   {% endif %}
   <div class="check-row">
@@ -32,7 +26,27 @@
         var b=event.target; b.textContent='Copied'; setTimeout(function(){b.textContent='Copy';},1500);
       });">Copy</button>
   </div>
-  <p class="meta-line" style="margin:.6rem 0 0">Valid for 72 hours.</p>
+  <p class="meta-line" style="margin:.6rem 0 0">
+    Works once, for {{ new_link.days }} days. It lets them choose a password; their
+    portfolio and progress are unchanged.
+  </p>
+</div>
+{% endif %}
+
+{% if invite_summary %}
+<div class="card" style="background:var(--sage-wash);border-color:#CFE0C8">
+  <h3 style="margin-top:0">Setup links sent</h3>
+  <p style="margin-bottom:{% if invite_summary.failed %}.6rem{% else %}0{% endif %}">
+    Emailed {{ invite_summary.sent|length }} {{ 'joiner' if invite_summary.sent|length == 1 else 'joiners' }}
+    a link to choose a password, valid for {{ invite_summary.days }} days.
+  </p>
+  {% if invite_summary.failed %}
+  <p style="margin:0;font-size:.92rem">
+    <span class="pill warn">not sent</span>
+    {{ invite_summary.failed|join(", ") }}. Use <em>Send setup link</em> on their
+    row to get a link you can pass on by hand.
+  </p>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -45,15 +59,31 @@
       <input type="text" id="name" name="name" placeholder="Alex Doe">
       <label for="email" style="margin-top:.7rem">Email</label>
       <input type="email" id="email" name="email" required placeholder="alex.doe@lgim.com">
-      <p style="margin:.9rem 0 0"><button class="btn" type="submit">{% if link_mode == 'user' %}Create and email a link{% else %}Create and show the link{% endif %}</button></p>
+      <p style="margin:.9rem 0 0"><button class="btn" type="submit">Create and email a setup link</button></p>
     </form>
     <p class="meta-line" style="margin-bottom:0">
-      With no mail key configured, the link is written to the server log instead.
+      People can also sign themselves up{% if not signup_enabled %} (currently switched off){% endif %}.
+      With no mail key configured, emails are written to the server log instead.
     </p>
   </div>
 
   <div class="card">
-    <h3 style="margin-top:0">Data</h3>
+    <h3 style="margin-top:0">Passwords</h3>
+    {% if n_without_password %}
+    <p class="meta-line">
+      {{ n_without_password }} {{ 'account has' if n_without_password == 1 else 'accounts have' }}
+      no password yet. They can set one from the sign-in page, or you can email
+      them all a link now.
+    </p>
+    <form method="post" action="/admin/invite-all">
+      <input type="hidden" name="token" value="{{ token }}">
+      <button class="btn" type="submit">Email setup links to {{ n_without_password }}</button>
+    </form>
+    {% else %}
+    <p class="meta-line" style="margin-bottom:0">Every account has a password.</p>
+    {% endif %}
+    <hr>
+    <h3>Data</h3>
     <p class="meta-line">Last refreshed {{ meta.refreshed_at or 'never' }}{% if meta.fetch_seconds %} in {{ meta.fetch_seconds }}s{% endif %}.</p>
     <form method="post" action="/admin/refresh">
       <input type="hidden" name="token" value="{{ token }}">
@@ -66,19 +96,20 @@
 <div class="card">
   <div class="table-scroll">
     <table>
-      <thead><tr><th>Name</th><th>Email</th><th class="num">Cleared</th><th>Added</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th>Password</th><th class="num">Cleared</th><th>Added</th><th></th></tr></thead>
       <tbody>
       {% for u in users %}
         <tr>
           <td>{{ u.name or "-" }}{% if u.is_admin %} <span class="pill soft">admin</span>{% endif %}</td>
           <td><code>{{ u.email }}</code></td>
+          <td>{% if u.has_password %}<span class="pill good">set</span>{% else %}<span class="pill warn">not yet</span>{% endif %}</td>
           <td class="num">{{ u.solved }} / {{ u.total }}</td>
           <td class="meta-line">{{ u.created_at[:10] }}</td>
           <td style="text-align:right">
-            <form method="post" action="/admin/relink" style="margin:0">
+            <form method="post" action="/admin/setup-link" style="margin:0">
               <input type="hidden" name="token" value="{{ token }}">
               <input type="hidden" name="user_id" value="{{ u.id }}">
-              <button class="btn ghost small" type="submit">New link</button>
+              <button class="btn ghost small" type="submit">Send setup link</button>
             </form>
           </td>
         </tr>

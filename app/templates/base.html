@@ -23,6 +23,7 @@
       <a href="/data" {% if request.url.path == '/data' %}class="active"{% endif %}>The data</a>
       {% if user %}
         {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
+        <a href="/account/password" {% if request.url.path == '/account/password' %}class="active"{% endif %}>Password</a>
         <a href="/logout">Sign out</a>
         <span class="pill soft">{{ user.name or user.email }}</span>
       {% else %}
@@ -33,6 +34,17 @@
 </header>
 
 <main>
+  {% if user and not user.has_password and request.url.path != '/account/password' %}
+  <div class="wrap" style="margin-bottom:1.2rem">
+    <div class="card" style="background:var(--butter-wash);border-color:#EEDFB8;box-shadow:none;padding:.8rem 1.1rem">
+      <p style="margin:0">
+        The site now signs you in with a password.
+        <a href="/account/password">Choose one</a> so you can get back in from any device.
+        Your portfolio and progress are unchanged.
+      </p>
+    </div>
+  </div>
+  {% endif %}
   <div class="wrap {% block wrapclass %}{% endblock %}">
     {% block content %}{% endblock %}
   </div>

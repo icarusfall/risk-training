@@ -5,6 +5,7 @@ lives on the mounted volume alongside the price cache.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import secrets
 import sqlite3
@@ -48,6 +49,21 @@ CREATE TABLE IF NOT EXISTS events (
     path       TEXT,
     created_at TEXT NOT NULL
 );
+-- Emailed links for choosing a password: signing up, an admin invite, or a
+-- reset. Only a hash of the token is stored, so a copy of the database does
+-- not hand out working links. A signup link has no user_id: the account is
+-- created when the link is used, not when the form is filled in.
+CREATE TABLE IF NOT EXISTS auth_tokens (
+    token_hash TEXT PRIMARY KEY,
+    purpose    TEXT NOT NULL,
+    email      TEXT NOT NULL,
+    name       TEXT NOT NULL DEFAULT '',
+    user_id    INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_auth_tokens_email ON auth_tokens(email);
 CREATE INDEX IF NOT EXISTS ix_attempts_user ON attempts(user_id, check_id);
 CREATE INDEX IF NOT EXISTS ix_events_kind ON events(kind, created_at);
 """
@@ -69,8 +85,15 @@ def conn():
 
 
 def init() -> None:
+    """Create tables, and add the password columns to a users table that
+    predates them. Existing joiners keep their id, seed and progress; they just
+    have no password until they choose one."""
     with conn() as c:
         c.executescript(SCHEMA)
+        cols = {r["name"] for r in c.execute("PRAGMA table_info(users)")}
+        for col in ("password_hash", "password_set_at"):
+            if col not in cols:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
 
 
 # --------------------------------------------------------------------------- #
@@ -121,14 +144,78 @@ def list_users() -> list[dict]:
 
 def delete_user(user_id: int) -> None:
     with conn() as c:
+        row = c.execute("SELECT email FROM users WHERE id=?", (user_id,)).fetchone()
         c.execute("DELETE FROM attempts WHERE user_id=?", (user_id,))
         c.execute("DELETE FROM login_tokens WHERE user_id=?", (user_id,))
+        c.execute("DELETE FROM auth_tokens WHERE user_id=? OR email=?",
+                  (user_id, row["email"] if row else ""))
         c.execute("DELETE FROM users WHERE id=?", (user_id,))
 
 
+def set_password(user_id: int, password_hash: str) -> dict:
+    with conn() as c:
+        c.execute("UPDATE users SET password_hash=?, password_set_at=? WHERE id=?",
+                  (password_hash, now(), user_id))
+        return dict(c.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone())
+
+
+def users_without_password() -> list[dict]:
+    with conn() as c:
+        return [dict(r) for r in c.execute(
+            "SELECT * FROM users WHERE password_hash IS NULL OR password_hash='' "
+            "ORDER BY created_at")]
+
+
 # --------------------------------------------------------------------------- #
-# magic links
+# password setup links
 # --------------------------------------------------------------------------- #
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def issue_auth_token(purpose: str, email: str, name: str = "",
+                     user_id: int | None = None, hours: int = 48) -> str:
+    """A fresh link token. Any earlier unused link for the same address stops
+    working, so only the most recent email is live."""
+    token = secrets.token_urlsafe(32)
+    email = email.strip().lower()
+    exp = (datetime.now(timezone.utc) + timedelta(hours=hours)).isoformat()
+    with conn() as c:
+        c.execute("UPDATE auth_tokens SET used_at=? WHERE email=? AND used_at IS NULL",
+                  (now(), email))
+        c.execute("""INSERT INTO auth_tokens
+                     (token_hash, purpose, email, name, user_id, created_at, expires_at)
+                     VALUES (?,?,?,?,?,?,?)""",
+                  (_token_hash(token), purpose, email, name, user_id, now(), exp))
+    return token
+
+
+def get_auth_token(token: str) -> dict | None:
+    """The link's details if it is unused and in date. Does not use it up."""
+    if not token or len(token) > 200:
+        return None
+    with conn() as c:
+        r = c.execute("SELECT * FROM auth_tokens WHERE token_hash=?",
+                      (_token_hash(token),)).fetchone()
+    if not r or r["used_at"]:
+        return None
+    if datetime.fromisoformat(r["expires_at"]) < datetime.now(timezone.utc):
+        return None
+    return dict(r)
+
+
+def consume_auth_tokens(email: str) -> None:
+    """Retire every outstanding link for an address, once a password is set."""
+    with conn() as c:
+        c.execute("UPDATE auth_tokens SET used_at=? WHERE email=? AND used_at IS NULL",
+                  (now(), email.strip().lower()))
+
+
+# --------------------------------------------------------------------------- #
+# magic links (legacy)
+# --------------------------------------------------------------------------- #
+# Sign-in before passwords. Nothing issues these any more except the smoke
+# test; links already sent are honoured until they expire.
 def issue_token(user_id: int, hours: int = 72) -> str:
     tok = secrets.token_urlsafe(32)
     exp = (datetime.now(timezone.utc) + timedelta(hours=hours)).isoformat()
@@ -197,6 +284,30 @@ def log_event(kind: str, user_id: int | None = None, detail: dict | None = None,
                            VALUES (?,?,?,?,?,?,?)""",
                         (user_id, kind, json.dumps(detail or {}), ip, user_agent, path, now()))
         return int(cur.lastrowid)
+
+
+def count_events(kinds: list[str], minutes: float, ip: str | None = None,
+                 email: str | None = None) -> int:
+    """How many events of these kinds in the last few minutes, optionally for
+    one IP or for one email address (read from the event detail). The rate
+    limits on sign-in and on emailed links are built on this."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=minutes)).isoformat()
+    q = "SELECT detail FROM events WHERE kind IN (%s) AND created_at >= ?" % ",".join("?" * len(kinds))
+    args: list = [*kinds, cutoff]
+    if ip is not None:
+        q += " AND ip=?"
+        args.append(ip)
+    with conn() as c:
+        rows = c.execute(q, args).fetchall()
+    if email is None:
+        return len(rows)
+    n = 0
+    for r in rows:
+        try:
+            n += json.loads(r["detail"] or "{}").get("email") == email
+        except ValueError:
+            continue
+    return n
 
 
 def recent_events(kinds: list[str] | None = None, limit: int = 200) -> list[dict]:

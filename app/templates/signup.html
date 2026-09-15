@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Create an account{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<div class="hero" style="text-align:center">
+  <h1>Create an account</h1>
+  <p style="margin:0 auto">
+    We will email you a link to choose your password. Already have an account?
+    <a href="/login">Sign in</a>.
+  </p>
+</div>
+
+{% if error %}
+<div class="card" style="background:var(--rose-wash);border-color:#F0D2D6">
+  <p style="margin:0">{{ error }}</p>
+</div>
+<br>
+{% endif %}
+
+{% if signup_enabled %}
+<div class="card">
+  <form method="post" action="/signup">
+    <label for="name">Your name</label>
+    <input type="text" id="name" name="name" autocomplete="name" maxlength="100"
+           value="{{ name or '' }}" placeholder="Alex Doe">
+    <label for="email" style="margin-top:.7rem">Email</label>
+    <input type="email" id="email" name="email" required autocomplete="email"
+           value="{{ email or '' }}" placeholder="you@lgim.com">
+    {% if allowed_domains %}
+    <p class="meta-line" style="margin:.4rem 0 0">
+      Open to addresses at {{ allowed_domains|join(", ") }}.
+    </p>
+    {% endif %}
+    <p style="margin:.9rem 0 0"><button class="btn" type="submit">Email me a link</button></p>
+  </form>
+  <p class="meta-line" style="margin:.9rem 0 0">
+    Each account gets its own portfolio, and your answers are marked against it,
+    so pick one address and stick to it.
+  </p>
+</div>
+{% else %}
+<div class="card">
+  <p style="margin:0">Sign-up is closed at the moment. Ask {{ admin_name }} to add you.</p>
+</div>
+{% endif %}
+{% endblock %}

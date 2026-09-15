@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Check your email{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<div class="hero" style="text-align:center">
+  <h1>Check your email</h1>
+  <p style="margin:0 auto">
+    {% if what == 'signup' %}
+    We have sent you a link to choose your password. Follow it to finish setting
+    up your account.
+    {% else %}
+    If there is an account for that address, a link to choose a new password is
+    on its way.
+    {% endif %}
+  </p>
+</div>
+
+<div class="card">
+  <p>
+    The link works once, and only for a limited time. If nothing turns up within a
+    few minutes, look in your junk folder: first emails from a new sender sometimes
+    land there.
+  </p>
+  <p style="margin-bottom:0">
+    Still nothing? {{ admin_name }} can send you a link from the admin page.
+    <a href="/login">Back to sign in</a>
+  </p>
+</div>
+{% endblock %}

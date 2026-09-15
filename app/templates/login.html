@@ -4,47 +4,38 @@
 {% block content %}
 <div class="hero" style="text-align:center">
   <h1>Sign in</h1>
-  {% if link_mode == 'user' %}
-  <p style="margin:0 auto">No password. We email you a link that works for three days.</p>
-  {% else %}
   <p style="margin:0 auto">
-    No password. Put in your email address and a login link will be sent to
-    {{ admin_name }}, who will forward it on to you. The link works for three days.
+    New here? {% if signup_enabled %}<a href="/signup">Create an account</a>.{% else %}Ask {{ admin_name }} to add you.{% endif %}
   </p>
-  {% endif %}
 </div>
 
-{% if sent %}
-  <div class="card" style="background:var(--sage-wash);border-color:#CFE0C8">
-    {% if link_mode == 'user' %}
-    <h3 style="margin-top:0">Check your inbox</h3>
-    <p style="margin-bottom:0">
-      If that address is registered, a link is on its way. Not registered yet?
-      Ask {{ admin_name }} to add you.
-    </p>
-    {% else %}
-    <h3 style="margin-top:0">Thanks &mdash; {{ admin_name }} has been sent a note</h3>
-    <p style="margin-bottom:0">
-      {{ admin_name }} will forward your link on. If you have not been set up on
-      the site yet, {{ admin_name }} gets a note about that too.
-    </p>
-    {% endif %}
-  </div>
-{% else %}
-  {% if error %}
-  <div class="card" style="background:var(--rose-wash);border-color:#F0D2D6">
-    <p style="margin:0">{{ error }}</p>
-  </div>
-  <br>
-  {% endif %}
-  <div class="card">
-    <form method="post" action="/login">
-      <label for="email">Work email</label>
-      <input type="email" id="email" name="email" required placeholder="you@lgim.com" autocomplete="email">
-      <p style="margin:.9rem 0 0">
-        <button class="btn" type="submit">{% if link_mode == 'user' %}Email me a link{% else %}Request a link{% endif %}</button>
-      </p>
-    </form>
-  </div>
+{% if error %}
+<div class="card" style="background:var(--rose-wash);border-color:#F0D2D6">
+  <p style="margin:0">{{ error }}</p>
+</div>
+<br>
 {% endif %}
+
+<div class="card">
+  <form method="post" action="/login">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required autocomplete="email"
+           value="{{ email or '' }}" placeholder="you@lgim.com">
+    <label for="password" style="margin-top:.7rem">Password</label>
+    <input type="password" id="password" name="password" required autocomplete="current-password">
+    <p style="margin:.9rem 0 0"><button class="btn" type="submit">Sign in</button></p>
+  </form>
+  <p class="meta-line" style="margin:.9rem 0 0">
+    <a href="/password/forgot">Forgotten your password, or never set one?</a>
+  </p>
+</div>
+<br>
+<div class="card" style="background:var(--sky-wash);border-color:#CBDFEC;box-shadow:none">
+  <p style="margin:0;font-size:.93rem">
+    <strong>Used the site before it had passwords?</strong> Your account, portfolio
+    and progress are all still here. Use the
+    <a href="/password/forgot">set or reset your password</a> link and we will
+    email you a link to choose one.
+  </p>
+</div>
 {% endblock %}

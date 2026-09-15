@@ -47,6 +47,22 @@ relative tolerance. `MMULT`, `SUMPRODUCT`, pairwise `COVARIANCE.S` — all pass.
 **Each joiner gets their own portfolio**, seeded from their user id, so answers
 cannot be shared. There are 32 self-checks across Modules 1 to 13.
 
+**Accounts use an email and a password.** Anyone can sign up (optionally
+limited to some email domains). The form emails a single-use link to choose a
+password, and the account only exists once that link is used, so a mistyped
+address leaves nothing behind. Passwords are hashed with scrypt from the
+standard library. Link tokens are stored only as hashes, and opening a link does
+not use it up, because corporate mail filters open links to scan them. Sign-in
+failures and emailed links are rate-limited from the events table. The sign-in,
+sign-up and reset forms give the same response whether or not an address has
+an account.
+
+Joiners from before passwords were grandfathered in. They keep their id, seed
+and progress, and their existing session cookies keep working until they
+choose a password, which signs out every other browser. Magic links already
+sent are honoured until they expire. The admin page can email a setup link to
+every account without a password in one go.
+
 **Three datasets.** `raw` is all 100 names exactly as they arrive, ragged and
 uncleaned, for Module 1. `core` (2005 onwards, 81 names, cleaned and trimmed to
 a rectangle) is the default and what every answer is computed from. `long`
@@ -104,11 +120,12 @@ uvicorn app.main:app --reload
 First boot fetches ~30s of data into `data_cache/`. Then create yourself an admin:
 
 ```bash
-python -c "from app import db; db.init(); u=db.create_user('you@lgim.com','You',is_admin=True); print(f'http://localhost:8000/auth/{db.issue_token(u[\"id\"])}')"
+python -c "from app import db, passwords; db.init(); u=db.create_user('you@lgim.com','You',is_admin=True); db.set_password(u['id'], passwords.hash_password('choose a local password'))"
 ```
 
-Open that link. With no `RESEND_API_KEY` set, magic links are written to the
-server log instead of emailed.
+Then sign in at `/login`. With no `RESEND_API_KEY` set, setup and reset links
+are written to the server log instead of emailed, so the sign-up flow works
+locally too.
 
 **Run `python scripts/smoke_test.py` before every push.** It hits every route
 in-process with deprecation warnings escalated to errors, grades every check,
@@ -119,11 +136,12 @@ and checks the canary, downloads, images and sign-in flow.
 1. Point a Railway project at this repo. `railway.json` handles the rest.
 2. **Add a volume mounted at `/data`** and set `DATA_DIR=/data`. Without it the
    price cache and the SQLite database are wiped on every redeploy.
-3. Set the variables in [`.env.example`](.env.example) — at minimum `SECRET_KEY`,
-   `BASE_URL`, `ADMIN_TOKEN` and `ADMIN_EMAIL`. While Resend is on its sandbox
-   sender, leave `LOGIN_LINK_RECIPIENT` at its default of `admin`, so sign-in
-   links are emailed to the admin to forward.
-4. Visit `/admin?token=<ADMIN_TOKEN>` to add joiners and email them links.
+3. Set the variables in [`.env.example`](.env.example): at minimum `SECRET_KEY`,
+   `BASE_URL`, `ADMIN_TOKEN`, `ADMIN_EMAIL`, `RESEND_API_KEY` and `MAIL_FROM`.
+   `MAIL_FROM` must be on a domain verified in Resend (charliesrisk101.com is),
+   or Resend will only deliver to the account owner. Set
+   `REDIRECT_TO_BASE_URL=1` so the Railway hostname forwards to the real one.
+4. Visit `/admin?token=<ADMIN_TOKEN>` to add joiners or email setup links.
 
 ## The canary
 
@@ -162,9 +180,8 @@ order.
 Charlie's view, 13 September 2026: with Module 12 the syllabus is essentially
 complete. What follows is optional.
 
-1. **Email joiners directly once a sending domain is verified in Resend.** Set
-   `MAIL_FROM` to an address on the domain and `LOGIN_LINK_RECIPIENT=user` in
-   Railway. Until then the sign-in form emails links to `ADMIN_EMAIL` to forward.
+1. **Move existing joiners onto passwords.** Once charliesrisk101.com is serving
+   the password release, use *Email setup links* on the admin page.
 
 When writing new lesson copy, follow the house style: plain and warm, jokes and
 concrete images welcome, no "it is not X, it is Y" punch finishes, and every
@@ -179,7 +196,8 @@ figure computed on the live data before it goes in.
   with no mean reversion.
 - **A real value factor**, if a point-in-time fundamentals source becomes
   available. It would plug into `build_exposures` in `app/reference/advanced.py`.
-- **Sharing with other teams.** Needs the sending domain above.
+- **Sharing with other teams.** Sign-up is open to anyone now;
+  `SIGNUP_ALLOWED_DOMAINS` restricts it if needed.
 
 ### Decided against
 
@@ -428,13 +446,14 @@ Python, which makes this a sensible place to end the programme.
 
 ```
 app/
-  main.py            FastAPI routes: pages, checks, downloads, sign-in, admin
+  main.py            FastAPI routes: pages, checks, downloads, accounts, admin
   config.py          all settings, overridable by environment variable
   checks.py          self-check engine (32 checks), per-joiner portfolios
   canary.py          bait paths, the answers.csv shortcut, cadence detection
   content.py         markdown lesson loader
-  db.py              SQLite: users, login tokens, attempts, events
-  mail.py            Resend email: login links, access requests, alerts
+  db.py              SQLite: users, setup-link tokens, attempts, events
+  mail.py            Resend email: setup links, sign-up notes, alerts
+  passwords.py       scrypt hashing and password rules
   data/
     universe.py      constituents from Wikipedia
     industry.py      40 sectors -> 11 ICB industries

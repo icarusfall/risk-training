@@ -54,23 +54,34 @@ BASE_URL = _env("BASE_URL", "http://localhost:8000")
 ADMIN_EMAIL = _env("ADMIN_EMAIL", "")
 ADMIN_TOKEN = _env("ADMIN_TOKEN", "letmein")
 
-# Who receives the login links requested from the sign-in page.
-#   "admin"  the link is emailed to ADMIN_EMAIL, who forwards it on. Needed
-#            while using Resend's sandbox sender, which only delivers to the
-#            account owner's own address.
-#   "user"   the link goes straight to the joiner. Switch to this once a
-#            sending domain has been verified.
-LOGIN_LINK_RECIPIENT = _env("LOGIN_LINK_RECIPIENT", "admin").strip().lower()
-# How the site refers to the person who runs the programme and forwards links.
+def _flag(key: str, default: str) -> bool:
+    return _env(key, default).strip().lower() not in ("0", "false", "no", "off", "")
+
+
+# How the site refers to the person who runs the programme.
 ADMIN_NAME = _env("ADMIN_NAME", "Charlie")
 
-# Outbound email for magic links + canary alerts (Resend). Unset => log to stdout.
+# --- accounts ----------------------------------------------------------------
+# Anyone can sign up unless this is switched off; they still have to receive
+# the emailed link before an account exists.
+SIGNUP_ENABLED = _flag("SIGNUP_ENABLED", "1")
+# Optional comma-separated list, e.g. "lgim.com,lgimamericas.com". Blank means
+# any address may sign up.
+SIGNUP_ALLOWED_DOMAINS = [d.strip().lower().lstrip("@")
+                          for d in _env("SIGNUP_ALLOWED_DOMAINS", "").split(",") if d.strip()]
+# Redirect every other hostname (the *.up.railway.app one) to BASE_URL's host.
+# Session cookies belong to one hostname, so without this somebody signed in on
+# one name looks signed out on the other.
+REDIRECT_TO_BASE_URL = _flag("REDIRECT_TO_BASE_URL", "0")
+
+# --- email (Resend) ----------------------------------------------------------
+# Unset => messages, including setup links, are written to the log instead.
 RESEND_API_KEY = _env("RESEND_API_KEY", "")
-# Resend's sandbox sender works with no domain setup, but ONLY delivers to the
-# Resend account owner's own address. Good enough for admin alerts; joiner
-# magic links to other domains are rejected, which is why /admin shows the
-# link on screen for forwarding. Verify a domain to email joiners directly.
+# Must be an address on a domain verified in Resend, or Resend will only
+# deliver to the account owner. e.g. "Risk Model Training <hello@charliesrisk101.com>"
 MAIL_FROM = _env("MAIL_FROM", "onboarding@resend.dev")
+# Where replies to site emails go.
+MAIL_REPLY_TO = _env("MAIL_REPLY_TO", ADMIN_EMAIL)
 
 # Tolerance for marking a self-check answer correct (relative).
 CHECK_RTOL = float(_env("CHECK_RTOL", "0.02"))

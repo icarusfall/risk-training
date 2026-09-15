@@ -30,7 +30,8 @@ from app import checks, config, db  # noqa: E402
 from app.main import app  # noqa: E402
 
 PAGES = ["/", "/data", "/data?dataset=long", "/login", "/robots.txt",
-         "/llms.txt", "/healthz", "/favicon.ico", "/login?sent=1"]
+         "/llms.txt", "/healthz", "/favicon.ico", "/signup", "/password/forgot",
+         "/check-email?what=signup"]
 PAGES += [f"/static/img/{name}.png" for name in [
     "var-tail", "orientation-windscreen", "data-bad-print", "returns-wednesday",
     "covariance-squeeze", "tracking-error-cash-seesaw", "ewma-anniversary-cliff",
@@ -44,6 +45,7 @@ DOWNLOADS = ["prices", "benchmarks", "universe", "quality", "workbook"]
 
 
 def main() -> int:
+    db.init()           # TestClient without a with-block skips the lifespan
     client = TestClient(app)
     failures: list[str] = []
 
@@ -61,35 +63,104 @@ def main() -> int:
     for slug in MODULES:
         check(f"/module/{slug}", client.get(f"/module/{slug}").status_code)
 
-    # A joiner is needed for the authenticated routes.
-    user = db.get_user_by_email("smoke-test@example.invalid") \
-        or db.create_user("smoke-test@example.invalid", "Smoke Test")
-    token = db.issue_token(user["id"])
-
-    print("auth")
-    check("/auth/<valid>", client.get(f"/auth/{token}",
-                                      follow_redirects=False).status_code, 303)
-    check("/auth/<invalid>", client.get("/auth/not-a-real-token",
-                                        follow_redirects=False).status_code, 400)
-
-    print("sign-in requests")
+    # Accounts. Emails are captured instead of sent, and earlier runs' throttle
+    # events are cleared so that running this repeatedly never locks itself out.
+    import re as _re_mail
     import uuid
-    fresh = db.create_user(f"login-{uuid.uuid4().hex[:8]}@example.invalid", "Login Test")
-    stranger = f"stranger-{uuid.uuid4().hex[:8]}@example.invalid"
-    before = len(db.recent_events(["login_requested"], limit=1000))
-    for label, addr in [("registered", fresh["email"]), ("unregistered", stranger),
-                        ("registered, repeated", fresh["email"])]:
-        check(f"POST /login {label}", client.post(
-            "/login", data={"email": addr}, follow_redirects=False).status_code, 303)
-    added = len(db.recent_events(["login_requested"], limit=1000)) - before
-    if added != 2:
-        failures.append(f"login requests: expected 2 events (repeat throttled), got {added}")
-    print(f"  {'repeat request throttled':32s} {'ok' if added == 2 else '<-- FAIL'}")
-    db.delete_user(fresh["id"])
+    from app import mail
+    from app.main import COOKIE, _signer
+    outbox: list[tuple[str, str, str]] = []
+    mail.send = lambda to, subject, body, reply_to=None: outbox.append((to, subject, body)) or True
+    with db.conn() as c:
+        c.execute("DELETE FROM events WHERE ip='testclient' "
+                  "AND kind IN ('auth_request', 'login_failed')")
+
+    def ok_line(label: str, ok: bool) -> None:
+        if not ok:
+            failures.append(label)
+        print(f"  {label:32s} {'ok' if ok else '<-- FAIL'}")
+
+    def link_in_last_email(to: str) -> str:
+        if not outbox or outbox[-1][0] != to:
+            return ""
+        m = _re_mail.search(r"/account/setup/([A-Za-z0-9_\-]+)", outbox[-1][2])
+        return m.group(1) if m else ""
+
+    def signed_in(c: TestClient, cookie: str | None = None) -> bool:
+        headers = {"cookie": f"{COOKIE}={cookie}"} if cookie else None
+        return "Sign out" in c.get("/", headers=headers).text
+
+    good_pw = "correct horse battery"
+
+    print("sign-up")
+    email = f"smoke-{uuid.uuid4().hex[:8]}@example.invalid"
+    check("POST /signup", client.post("/signup", data={"email": email, "name": "Smoke Test"},
+                                      follow_redirects=False).status_code, 303)
+    tok = link_in_last_email(email)
+    ok_line("setup link emailed", bool(tok))
+    ok_line("no account before link is used", db.get_user_by_email(email) is None)
+    check("GET setup link", client.get(f"/account/setup/{tok}").status_code)
+    check("GET setup link again", client.get(f"/account/setup/{tok}").status_code)
+    check("setup: too short", client.post(f"/account/setup/{tok}",
+          data={"password": "short", "confirm": "short"}).status_code, 400)
+    check("setup: mismatch", client.post(f"/account/setup/{tok}",
+          data={"password": good_pw, "confirm": good_pw + "!"}).status_code, 400)
+    check("setup: good password", client.post(f"/account/setup/{tok}",
+          data={"password": good_pw, "confirm": good_pw}, follow_redirects=False).status_code, 303)
+    check("setup link is single-use", client.get(f"/account/setup/{tok}").status_code, 400)
+    check("/account/setup/<invalid>", client.get("/account/setup/not-a-token").status_code, 400)
+    user = db.get_user_by_email(email)
+    ok_line("account created with password", bool(user and user.get("password_hash")))
+    user = user or db.create_user(email, "Smoke Test")
+    ok_line("signed in after setup", signed_in(client))
+
+    print("passwords")
+    anon = TestClient(app)
+    check("login: wrong password", anon.post("/login", data={
+        "email": email, "password": "not the right one"}).status_code, 400)
+    check("login: unknown address", anon.post("/login", data={
+        "email": f"nobody-{uuid.uuid4().hex[:6]}@example.invalid", "password": good_pw}).status_code, 400)
+    check("login: right password", anon.post("/login", data={
+        "email": email, "password": good_pw}, follow_redirects=False).status_code, 303)
+    ok_line("signed in after login", signed_in(anon))
+
+    print("existing joiners (no password)")
+    old = db.create_user(f"legacy-{uuid.uuid4().hex[:8]}@example.invalid", "Legacy Joiner")
+    old_cookie = _signer.dumps({"uid": old["id"]})          # issued before passwords
+    ok_line("pre-password cookie still works", signed_in(TestClient(app), old_cookie))
+    check("legacy magic link", TestClient(app).get(f"/auth/{db.issue_token(old['id'])}",
+          follow_redirects=False).status_code, 303)
+    check("/auth/<invalid>", TestClient(app).get("/auth/not-a-real-token",
+          follow_redirects=False).status_code, 400)
+    n = len(outbox)
+    check("POST /password/forgot", TestClient(app).post(
+        "/password/forgot", data={"email": old["email"]}, follow_redirects=False).status_code, 303)
+    tok = link_in_last_email(old["email"])
+    ok_line("reset link emailed", len(outbox) == n + 1 and bool(tok))
+    TestClient(app).post("/password/forgot", data={"email": old["email"]})
+    ok_line("repeat request throttled", len(outbox) == n + 1)
+    check("set password from reset link", TestClient(app).post(
+        f"/account/setup/{tok}", data={"password": good_pw, "confirm": good_pw},
+        follow_redirects=False).status_code, 303)
+    ok_line("old cookie retired by new password", not signed_in(TestClient(app), old_cookie))
+    after = db.get_user(old["id"])
+    ok_line("seed and account kept", bool(after) and after["seed"] == old["seed"])
+
+    print("lockout")
+    lock = TestClient(app)
+    for _ in range(5):
+        lock.post("/login", data={"email": old["email"], "password": "wrong wrong wrong"})
+    check("locked after 5 failures", lock.post("/login", data={
+        "email": old["email"], "password": good_pw}).status_code, 429)
 
     print("admin")
     check("/admin?token=", TestClient(app).get(
         f"/admin?token={config.ADMIN_TOKEN}").status_code)
+    n = len(outbox)
+    check("POST /admin/setup-link", TestClient(app).post("/admin/setup-link", data={
+        "user_id": old["id"], "token": config.ADMIN_TOKEN}).status_code)
+    ok_line("admin setup link emailed", len(outbox) == n + 1)
+    db.delete_user(old["id"])
 
     print("downloads")
     for key in DOWNLOADS:

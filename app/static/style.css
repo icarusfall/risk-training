@@ -220,7 +220,7 @@ main { padding: 2.4rem 0 5rem; }
 .btn.ghost:hover { background: var(--paper-deep); color: var(--ink); border-color: var(--lilac); }
 .btn.small { padding: .38rem .75rem; font-size: .82rem; }
 
-input[type=text], input[type=email], input[type=number], select {
+input[type=text], input[type=email], input[type=password], input[type=number], select {
   font-family: var(--sans); font-size: .92rem;
   padding: .55rem .7rem; border: 1px solid var(--line);
   border-radius: 9px; background: var(--card); color: var(--ink);

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Set or reset your password{% endblock %}
+{% block wrapclass %}narrow{% endblock %}
+{% block content %}
+<div class="hero" style="text-align:center">
+  <h1>Set or reset your password</h1>
+  <p style="margin:0 auto">
+    Put in the address you use for the site and we will email you a link to
+    choose a new password.
+  </p>
+</div>
+
+<div class="card">
+  <form method="post" action="/password/forgot">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@lgim.com">
+    <p style="margin:.9rem 0 0"><button class="btn" type="submit">Email me a link</button></p>
+  </form>
+  <p class="meta-line" style="margin:.9rem 0 0">
+    This is also the way in if you used the site before it had passwords. Your
+    account, portfolio and progress are unchanged.
+  </p>
+</div>
+{% endblock %}
