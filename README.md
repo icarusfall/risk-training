@@ -173,12 +173,10 @@ more meaningful, and at a regulated firm employee monitoring deserves the notice
 
 ## To do
 
-The copy review of all eleven modules finished on 13 September 2026, and every
-module had its cartoons by the end of the same day. Work through these roughly in
-order.
-
-Charlie's view, 13 September 2026: with Module 12 the syllabus is essentially
-complete. What follows is optional.
+All fourteen modules (0 to 13) are written, reviewed, illustrated and live, and
+accounts moved to email and password on charliesrisk101.com on 15 September
+2026. Charlie's view is that the syllabus is essentially complete; everything
+under *Parked* is optional.
 
 1. **Move existing joiners onto passwords.** Once charliesrisk101.com is serving
    the password release, use *Email setup links* on the admin page.
@@ -194,6 +192,10 @@ figure computed on the live data before it goes in.
 - **Time-series models: ARMA, ARCH, GARCH.** Charlie's ideas for optional further
   modules. GARCH would follow naturally from Module 5's EWMA, which is a GARCH(1,1)
   with no mean reversion.
+- **Liquidity modelling and credit modelling.** Possible later extensions beyond
+  equity market risk. Neither has a spec yet, and both need data this site does
+  not currently fetch (volumes and spreads for liquidity; ratings, spreads or
+  default data for credit).
 - **A real value factor**, if a point-in-time fundamentals source becomes
   available. It would plug into `build_exposures` in `app/reference/advanced.py`.
 - **Sharing with other teams.** Sign-up is open to anyone now;
